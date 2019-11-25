@@ -1,0 +1,21 @@
+data_dirs:
+  genotype: "../data/calls_filtered_31802"
+  phenotype: "../data"
+  output: "../output/inv_norm_only_white"
+  tmp: "../data/tmp"
+filename_pattern:
+  phenotype_list: "run_params/phenotypes.txt"
+  phenotypes:
+  genotype: "ukb_cal_chr{chromosome}_v2_31802_indiv.bed"
+  bim: "ukb_cal_chr{chromosome}_v2_31802_indiv.bim"
+  fam: "ukb_cal_chr{chromosome}_v2_31802_indiv.fam"
+  phenotype: "Cardiac_InvNorm_Indexes_Adj_11350.tsv"
+  phenotype_tmp: "Cardiac_InvNorm_Indexes_Adj_11350_tmp.tsv"
+  gwas: "gwas__white_indiv__invnorm__{phenotype}{suffix}"
+  covariates:
+exec:
+  sbat: "software_bgenie_sbat/sbat/executables/sbat_centos6.8_dynamic"
+  plink: "plink"
+chromosomes: 1-22
+merge_chromosomes: True
+individuals: "../data/ids_list/cmr_white_ids.txt"
