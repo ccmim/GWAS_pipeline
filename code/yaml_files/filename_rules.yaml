@@ -1,0 +1,14 @@
+covariate_adjustment:
+  False:
+  True: "Adj"
+inverse_normalization:
+  False:
+  True: "InvNorm"
+segmentation_method:
+  manual: "Manual"
+  automatic: "Auto"
+  manual_plus_automatic: "Man_And_Auto"
+ethnicity:
+  white: "EUR"
+  british: "GBR"
+  all: "All_Ethnicities"

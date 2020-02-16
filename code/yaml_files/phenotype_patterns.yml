@@ -1,0 +1,3 @@
+phenotype_file: "Cardiac_Function_Indexes_11350.tsv"
+phenotype_file_tmp: "tmp/Cardiac_Function_Indexes_11350_tmp.tsv"
+covariates: ""

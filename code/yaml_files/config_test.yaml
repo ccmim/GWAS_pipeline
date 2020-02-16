@@ -1,0 +1,20 @@
+chromosomes: 20-22
+data_dir: "/home/rodrigo/Leeds/doctorado/repos/GWAS_pipeline/data"
+output_dir: "/home/rodrigo/Leeds/doctorado/repos/GWAS_pipeline/output"
+phenotype_list: "phenotypes.txt"
+individuals: "{data_dir}/ids_list/cmr_british_ids.txt"
+filename_patterns: {
+  genotype: "genotype_patterns.yaml",
+  phenotype: "phenotype_patterns.yml",
+  gwas: "gwas/{phenotype}/gwas__{phenotype}{suffix}"
+}
+suffix: "{covariate_adjustment}__{inverse_normalization}__{segmentation_method}__{ethnicity}"
+suffix_tokens: "filename_rules.yaml"
+exec:
+  plink: "plink"
+options: {
+  covariate_adjustment: True,
+  inverse_normalization: True,
+  segmentation_method: "automatic",
+  ethnicity: "white"
+}

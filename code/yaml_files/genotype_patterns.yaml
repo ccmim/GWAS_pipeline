@@ -1,0 +1,4 @@
+bed: "{data_dir}/calls_filtered_31802/ukb_cal_chr{{chromosome}}_v2_31802_indiv.bed"
+bim: "{data_dir}/calls_filtered_31802/ukb_cal_chr{{chromosome}}_v2_31802_indiv.bim"
+fam: "{data_dir}/calls_filtered_31802/ukb_cal_chr{{chromosome}}_v2_31802_indiv.fam"
+
