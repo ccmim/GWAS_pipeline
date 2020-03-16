@@ -26,7 +26,8 @@ class GWAS_Run:
         phenotype_list = config["phenotype_list"]
         if os.path.exists(os.path.join(os.path.dirname(self.yaml_config_file), phenotype_list)):
             phenotype_list = os.path.join(os.path.dirname(self.yaml_config_file), phenotype_list)
-            self.phenotypes = [x.strip() for x in open(phenotype_list)]
+            self.phenotypes_all = [x.strip() for x in open(phenotype_list)]
+            self.phenotypes = self.phenotypes_all
         else:
             self.phenotypes = phenotype_list
 
@@ -79,7 +80,7 @@ class GWAS_Run:
         self.merge_chromosomes = config.get("merge_chromosomes", True)
         self.ids = config.get("individuals", None).format(data_dir=config["data_dir"])
 
-        # self.overwrite_output = config.get("overwrite_output", False)
+        self.overwrite_output = config.get("overwrite_output", True)
         # self.generate_tabix = config.get("generate_tabix", False)
         # self.adjust_for_covariates =
 
@@ -171,6 +172,7 @@ class GWAS_Run:
         # TODO: add log messages (redirect error output?)
         print("  Processing chromosome {}...".format(chromosome))
         output_basename = self.gwas_fp.format(phenotype=phenotype, suffix="%s__chr%s" % (self.output_suffix, chromosome))
+        # print("    Generating file {}.qassoc...".format(output_basename))
         command = [self.plink_exec,
                    "--bed", self.bed_fp.format(chromosome=chromosome),
                    "--bim", self.bim_fp.format(chromosome=chromosome),
@@ -210,12 +212,12 @@ class GWAS_Run:
             print("Processing {}...".format(phenotype))
             output_filename = self.gwas_fp.format(phenotype=phenotype, suffix=self.output_suffix)
             os.makedirs(os.path.dirname(output_filename), exist_ok=True)
-            if os.path.exists(output_filename):
+            if os.path.exists(output_filename) and not self.overwrite_output:
                 print("Output file already exists, if a new run is desired please delete the previous file.")
-                break
-
-            for chr in sorted(int(i) for i in self.chromosomes):
-                self.execute(str(chr), phenotype)
+                continue
+            else:
+                for chr in sorted(int(i) for i in self.chromosomes):
+                    self.execute(str(chr), phenotype)
 
             if self.merge_chromosomes:
 
@@ -230,7 +232,7 @@ class GWAS_Run:
                                         merged_fh.write("%s\n" % "\t".join(line.strip().split()))
                                 os.remove(file_chr)
                         except:
-                            from IPython import embed; embed()
+                           from IPython import embed; embed()
 
         if self.delete_temp:
             os.remove(self.pheno_f_tmp)
