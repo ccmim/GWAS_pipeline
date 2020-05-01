@@ -1,7 +1,7 @@
 chromosomes: 20-22
 data_dir: "/home/rodrigo/Leeds/doctorado/repos/GWAS_pipeline/data"
 output_dir: "/home/rodrigo/Leeds/doctorado/repos/GWAS_pipeline/output"
-phenotype_list: "phenotypes.txt"
+phenotype_list: # "phenotypes.txt"
 individuals: "{data_dir}/ids_list/cmr_british_ids.txt"
 filename_patterns: {
   genotype: "genotype_patterns.yaml",
