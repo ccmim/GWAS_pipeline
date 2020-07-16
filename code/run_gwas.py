@@ -5,133 +5,31 @@ from subprocess import call
 from .auxiliary import is_yaml_file, parseIntSet, is_number
 # import logging
 
-
-class GWAS_Run:
+class GWASConfig:
 
     def __init__(self, yaml_config_file):
 
         self.yaml_config_file = yaml_config_file
         config = self.unfold_config(yaml_config_file)
 
-        # dir stands for directory
-        # f stands for file
-        # fp stands for file pattern
+        self.data_dir = self.get_data_dir(config)
+        self.pheno_f = self.get_pheno_file(config)
+        self.pheno_f_tmp = self.get_pheno_tmp_file(config) # temporal file with phenotype values
+        self.phenotypes = self.get_phenotypes(config)
 
-        # phenotype_list_f = config.get("phenotype_list", None)
-        # if phenotype_list_f is not None:
-        #     self.phenotypes = [x.strip() for x in open(phenotype_list_f)]
-        # else:
-        #     self.phenotypes = config.get("phenotypes_list").strip().split()
+        self.indiv_f = self.get_indiv_f(config)
+        self.bed_fp, self.bim_fp, self.fam_fp = self.get_genotype_files(config)
+        self.gwas_fp = self.get_gwas_f(config)
 
-        # file with phenotype values
-        ## file name patterns
-        fp_config = config["filename_patterns"]
-        self.pheno_f = os.path.join(config["data_dir"], fp_config["phenotype"]["phenotype_file"])
-        # temporal file with phenotype values
-        self.pheno_f_tmp = os.path.join(config["data_dir"], fp_config["phenotype"]["phenotype_file_tmp"])
+        # other options (not required)
+        self.delete_temp_flag = self.get_delete_tmp_flag(config)
+        self.merge_chromosomes_flag = self.get_merge_chromosomes_flag(config)
+        self.overwrite_output_flag = self.get_overwrite_output_flag(config)
+        self.chromosomes = self.get_chromosomes(config)
 
-        phenotype_list = config["phenotype_list"]
-        if phenotype_list is None:
-            self.phenotypes = open(self.pheno_f).readline().strip().split(",")
-            self.phenotypes.remove("IID")
-        elif os.path.exists(os.path.join(os.path.dirname(self.yaml_config_file), phenotype_list)):
-            phenotype_list = os.path.join(os.path.dirname(self.yaml_config_file), phenotype_list)
-            self.phenotypes_all = [x.strip() for x in open(phenotype_list)]
-            self.phenotypes = self.phenotypes_all
-        elif isinstance(phenotype_list, list):
-            self.phenotypes = phenotype_list
+        self.plink_exec = self.get_executable_paths(config)
 
-        # self.indiv_f = fp_config.get("individuals", None)
-
-        self.bed_fp = fp_config["genotype"]["bed"].format(data_dir=config["data_dir"])
-        self.bim_fp = fp_config["genotype"]["bim"].format(data_dir=config["data_dir"])
-        self.fam_fp = fp_config["genotype"]["fam"].format(data_dir=config["data_dir"])
-
-        self.gwas_fp = os.path.join(config["output_dir"], fp_config["gwas"])
-        self.gwas_fp = self.gwas_fp.format(**(config["tokens"]))
-
-        # self.filename_rules = config["suffix_tokens"]
-
-        # options = config["options"]
-        # options_suffix_tokens = {}
-
-        # if options is not None:
-        #   for k in options.keys():
-        #     options_suffix_tokens[k] = self.filename_rules[k][options[k]]
-        #   self.output_suffix = config["suffix"].format(**options_suffix_tokens)
-        # else:
-        #   self.output_suffix = config["suffix"]
-
-        ## covariates list
-        self.covariates_f = fp_config.get("covariates", None)
-        if self.covariates_f is not None:
-            self.covariate_list = [x.strip() for x in config["covariate_list"].split(",")]
-            self.get_covariate_column_indices()
-
-        ## paths to executable files
-        ## self.sbat_exec = config["exec"]["sbat"]
-        self.plink_exec = config["exec"]["plink"]
-
-        # Generate
-        self.generate_phenotype_file()
-
-        chromosomes = parseIntSet(str(config["chromosomes"]))
-        self.chromosomes = [x for x in chromosomes if is_number(x)]
-        self.chromosomes += [x for x in chromosomes if x in ("X", "Y")]
-
-        ################################
-
-        # other options
-        self.delete_temp = config.get("delete_temp", True)
-        self.merge_chromosomes = config.get("merge_chromosomes", True)
-        self.ids = config.get("individuals", None).format(data_dir=config["data_dir"])
-
-        self.overwrite_output = config.get("overwrite_output", True)
         # self.generate_tabix = config.get("generate_tabix", False)
-        # self.adjust_for_covariates =
-
-        ## TODO: FIX THIS TEMPORARY PATCH
-        self.config = config
-
-    def get_covariate_column_indices(self):
-        header_comps = open(self.covariates_f).readline().strip().split()
-        self.cov_index_list = [str(header_comps.index(cov)-1) for cov in self.covariate_list]
-
-    def __str__(self):
-        return ("\n".join([
-            "bed file pattern: %s" % self.bed_fp,
-            "bim file pattern: %s" % self.bim_fp,
-            "fam file pattern: %s" % self.fam_fp,
-            "Phenotype file name: %s" % self.pheno_f if self.pheno_f is not None else self.pheno_fp,
-            "GWAS file name: %s" % self.gwas_fp # if self.gwas_f is not None else self.gwas_fp
-        ]))
-
-    def generate_phenotype_file(self):
-        '''
-        Create a phenotype file with the format as required by plink
-        IID|FID|phenotype1|phenotype2|...
-        '''
-
-        df = pd.read_table(self.pheno_f, sep=',')
-        # df.rename(columns={"Subject ID": "IID"}, inplace=True)
-
-        df["FID"] = df["IID"]  # duplicate ID column in FID column
-        # print(df.head())
-
-        cols = df.columns.to_list()
-        cols = [cols[-1]] + [cols[0]] + cols[1:-1]
-
-        # ID|FID|pheno1|pheno2|...
-
-        cols = [x for x in cols if x in (["IID", "FID"] + self.phenotypes)]
-
-        df = df[cols]
-
-        # TODO: raise warning if `not_found` is not empty
-        # not_found = {x for x in self.phenotypes if x not in cols}
-
-        df.to_csv(self.pheno_f_tmp, sep="\t", na_rep="NA", index=False)
-
 
     def unfold_config(self, token):
         '''
@@ -140,8 +38,9 @@ class GWAS_Run:
         it will load their contents as values of the corresponding keys
         '''
         if is_yaml_file(token):
+            print(os.path.join(os.path.dirname(self.yaml_config_file), token))
             try:
-                token = yaml.safe_load(open(os.path.join(os.path.dirname(self.yaml_config_file),token)))
+                token = yaml.safe_load(open(os.path.join(os.path.dirname(self.yaml_config_file), token)))
             except:
                 token = yaml.safe_load(open(token))
         if isinstance(token, dict):
@@ -150,51 +49,218 @@ class GWAS_Run:
                 token[k] = self.unfold_config(v)
         return token
 
-    def format_genotype_file(origin="bed", destiny="bgen"):
+    def get_data_dir(self, config):
+        return config.get("data_dir", None)
 
-        '''
-        run shell commands in order to convert from the origin format to the destiny format (the one required by the GWAS tool, e.g. plink or BGENIE)
-        '''
-
-        pass
-
-        # TODO: add log messages (redirect error output?)
-        if (origin, destiny) == ("bed", "bgen"):
-            output_f = genotype_f[:-3] + "bgen"
-            command = [plink, "--pfile", genotype_f, "--export", "bgen-1.2", "--out", output_f]
+    def get_pheno_file(self, config):
+        pheno_f = config["filename_patterns"]["phenotype"]["phenotype_file"]
+        if os.path.isabs(pheno_f) or self.data_dir is None:
+            return pheno_f
         else:
-            return
+            return os.path.join(self.data_dir, pheno_f)
 
-        call(command)
+    def get_pheno_tmp_file(self, config):
+        pheno_f_tmp = config["filename_patterns"]["phenotype"]["phenotype_file_tmp"]
+        if os.path.isabs(pheno_f_tmp) or self.data_dir is None:
+            return pheno_f_tmp
+        else:
+            return os.path.join(self.data_dir, pheno_f_tmp)
 
-    def filter_individuals(ids=None, conditions=None, fields=None, tmp=True):
-        '''
-        filter by ids, or a set of conditions imposed on a field or fields (e.g. gender, ethnicity and/or age).
-        if tmp == True, the files generated herein will be erased in the end
-        '''
+    def get_phenotypes(self, config):
+
+        phenotype_list = config.get("phenotype_list", None)
+        # if None, use all the phenotypes
+        if phenotype_list is None:
+            phenotypes = open(self.pheno_f).readline().strip().split()
+            phenotypes.remove("IID")
+        elif os.path.exists(os.path.join(os.path.dirname(self.yaml_config_file), phenotype_list)):
+            phenotype_list = os.path.join(
+                os.path.dirname(self.yaml_config_file),
+                phenotype_list
+            )
+            phenotypes_all = [x.strip() for x in open(phenotype_list)]
+            phenotypes = self.phenotypes_all
+        elif isinstance(phenotype_list, list):
+            phenotypes = phenotype_list
+            return phenotypes
+
+    def get_indiv_f(self, config):
+        return config["filename_patterns"].get("individuals", None)
+
+    def get_genotype_files(self, config):
+        """
+        I am assuming that the genotype file name patterns contain "{data_dir}"
+        :param config:
+        :return:
+        """
+        bed_fp = config["filename_patterns"]["genotype"]["bed"].format(data_dir=config["data_dir"])
+        bim_fp = config["filename_patterns"]["genotype"]["bim"].format(data_dir=config["data_dir"])
+        fam_fp = config["filename_patterns"]["genotype"]["fam"].format(data_dir=config["data_dir"])
+        return bed_fp, bim_fp, fam_fp
+
+    def get_gwas_f(self, config):
+        output_dir = config.get("output_dir", "")
+        gwas_fp = os.path.join(config["output_dir"], config["filename_patterns"]["gwas"])
+        #TODO: finish this!!!
+        #from IPython import embed; embed()
+        gwas_fp = gwas_fp.format(**(config["suffix_tokens"]))
+        return gwas_fp
+
+    def get_delete_tmp_flag(self, config):
+        return config.get("delete_temp", True)
+
+    def get_merge_chromosomes_flag(self, config):
+        return config.get("merge_chromosomes", True)
+
+    def get_overwrite_output_flag(self, config):
+        return config.get("overwrite_output", True)
+
+    def get_chromosomes(self, config):
+        chromosomes = parseIntSet(str(config["chromosomes"]))
+        chromosomes = [x for x in chromosomes if is_number(x)]
+        chromosomes += [x for x in chromosomes if x in ("X", "Y")]
+        return chromosomes
+
+    def get_executable_paths(self, config):
+        ## paths to executable files
+        try:
+            plink_exec = config["exec"]["plink"]
+        except:
+            plink_exec = "plink"
+        return plink_exec
+
+    def generate_output_name(self):
         pass
+
+
+    def get_covariates(self, config):
+
+        # Not implemented yet.
+        # Currently adjustment for covariates is performed separately in R.
+        # TODO: finish this!
+
+        self.covariates_f = config["filename_patterns"].get("covariates", None)
+
+        def get_covariate_column_indices(self):
+            header_comps = open(self.covariates_f).readline().strip().split()
+            self.cov_index_list = [str(header_comps.index(cov) - 1) for cov in self.covariate_list]
+
+        ## covariates list
+        if self.covariates_f is not None:
+            self.covariate_list = [x.strip() for x in config["covariate_list"].split(",")]
+            self.get_covariate_column_indices()
+
+
+    def get_options(self, config):
+        options = config["options"]
+        options_suffix_tokens = {}
+        if options is not None:
+            for k in options.keys():
+                options_suffix_tokens[k] = self.filename_rules[k][options[k]]
+                self.output_suffix = config["suffix"].format(**options_suffix_tokens)
+        else:
+            self.output_suffix = config["suffix"]
+
+
+class GWAS_Run:
+
+    def __init__(self, yaml_config_file):
+        self.config = GWASConfig(yaml_config_file)
+        # self.filename_rules = config["suffix_tokens"]
+
+        # Generate
+        self.generate_phenotype_file()
+
+    def __str__(self):
+        return ("\n".join([
+            "bed file pattern: %s" % self.config.bed_fp,
+            "bim file pattern: %s" % self.config.bim_fp,
+            "fam file pattern: %s" % self.config.fam_fp,
+            "Phenotype file name: %s" % self.pheno_f if self.pheno_f is not None else self.pheno_fp,
+            "GWAS file name: %s" % self.gwas_fp # if self.gwas_f is not None else self.gwas_fp
+        ]))
+
+    def generate_phenotype_file(self, input_id_column="ID"):
+        '''
+        Create a phenotype file with the format as required by plink
+        IID|FID|phenotype1|phenotype2|...
+        '''
+
+        df = pd.read_table(self.pheno_f, sep=',')
+
+        df.rename(
+            columns={input_id_column: "IID"},
+            inplace=True
+        )
+
+        df["FID"] = df["IID"]  # duplicate ID column in FID column
+
+        cols = df.columns.to_list()
+        cols = [cols[-1]] + [cols[0]] + cols[1:-1] # reorder columns: IID|FID|phenotypes
+        cols = [x for x in cols if x in (["IID", "FID"] + self.phenotypes)]
+        df = df[cols]
+
+        # TODO: raise warning if `not_found` is not empty
+        # not_found = {x for x in self.phenotypes if x not in cols}
+
+        df.to_csv(
+            self.config.pheno_f_tmp,
+            sep="\t", na_rep="NA", index=False
+        )
+
+
+    # def format_genotype_file(origin="bed", destiny="bgen"):
+    #
+    #     '''
+    #     run shell commands in order to convert from the origin format to the destiny format (the one required by the GWAS tool, e.g. plink or BGENIE)
+    #     '''
+    #
+    #     pass
+    #
+    #     # TODO: add log messages (redirect error output?)
+    #     if (origin, destiny) == ("bed", "bgen"):
+    #         output_f = genotype_f[:-3] + "bgen"
+    #         command = [plink, "--pfile", genotype_f, "--export", "bgen-1.2", "--out", output_f]
+    #     else:
+    #         return
+    #
+    #     call(command)
+
+
+    # def filter_individuals(ids=None, conditions=None, fields=None, tmp=True):
+    #     '''
+    #     filter by ids, or a set of conditions imposed on a field or fields (e.g. gender, ethnicity and/or age).
+    #     if tmp == True, the files generated herein will be erased in the end
+    #     '''
+    #     pass
+
 
     def execute(self, chromosome, phenotype):
         # TODO: add log messages (redirect error output?)
-        print("  Processing chromosome {}...".format(chromosome))
+
         # output_basename = self.gwas_fp.format(phenotype=phenotype, suffix="%s__chr%s" % (self.output_suffix, chromosome))
         # print("    Generating file {}.qassoc...".format(output_basename))
-        command = [self.plink_exec,
-                   "--bed", self.bed_fp.format(chromosome=chromosome),
-                   "--bim", self.bim_fp.format(chromosome=chromosome),
-                   "--fam", self.fam_fp.format(chromosome=chromosome),
-                   "--pheno", self.pheno_f_tmp,
-                   "--pheno-name", phenotype,
-                   "--out", self.output_file]
-                   # "--out", output_basename]
+
+        print("  Processing chromosome {}...".format(chromosome))
+        command = [
+            self.plink_exec,
+            "--bed", self.bed_fp.format(chromosome=chromosome),
+            "--bim", self.bim_fp.format(chromosome=chromosome),
+            "--fam", self.fam_fp.format(chromosome=chromosome),
+            "--pheno", self.pheno_f_tmp,
+            "--pheno-name", phenotype,
+            "--out", self.output_file
+        ]
 
         if self.covariates_f is None:
             command += ["--assoc"]
             # self.output_suffix = ".qassoc"
         else:
-            command += ["--linear",
-                        "--covar", self.covariates_f,
-                        "--parameters", ",".join(self.cov_index_list)]
+            command += [
+                "--linear",
+                "--covar", self.covariates_f,
+                "--parameters", ",".join(self.cov_index_list)
+            ]
             # self.output_suffix = ".assoc.linear"
 
         if self.ids is not None:
@@ -202,50 +268,70 @@ class GWAS_Run:
 
         call(command)
 
+    #####################################################################
+    # def extract_metadata(fields): pass
+    # def adjust_phenotype(covariates): pass
+    # def manhattan_plot(gwas_results): pass
 
-    def extract_metadata(fields):
-        command = ["ukbconv", ""]
-        pass
+    def gwas_f_chr_suffix(self):
+        return self.config.gwas_fp + "__chr{chr}"
 
-    def adjust_phenotype(covariates):
-        pass
+    def create_gwas_dir(self):
+        os.makedirs(os.path.dirname(self.gwas_fp_), exist_ok=True)
 
-    def manhattan_plot(gwas_results):
-        pass
+    def sorted_chromosomes(self):
+        return [ str(x) for x in sorted([int(y) for y in self.config.chromosomes]) ]
 
+    def stop_because_existent(self):
+        return os.path.exists(self.output_file) and not self.config.overwrite_output
+
+    ###
+    def merge_chromosomes(self, phenotype):
+
+        self.merged_output_file = self.config.gwas_fp.format(phenotype=phenotype) + ".tsv"
+        merged_fh = open(self.merged_output_file, "w")
+        # TODO: suffix "qassoc" is added ad hoc, it would be better to include as attribute in the class
+        # partitioned_gwas_files = [
+        #    self.gwas_fp_.format(phenotype=phenotype, chr=chr) + ".qassoc" for chr in self.chromosomes
+        # ]
+        # for i, file_chr in enumerate(partitioned_gwas_files):
+        for i, file_chr in enumerate(self.output_files_by_pheno):
+            chr_fh = open(file_chr)
+            for j, line in enumerate(chr_fh):
+                if (i == 0 and j == 0) or (j != 0):
+                    merged_fh.write("%s\n" % "\t".join(line.strip().split()))
+                    os.remove(file_chr)
+            chr_fh.close()
+        merged_fh.close()
+
+
+    #### EXECUTE ALL THE GWAS ####
     def run(self):
 
-        for phenotype in self.phenotypes:
+        import datetime
+
+        for phenotype in self.config.phenotypes:
+
+            self.timestamp = datetime.datetime
             print("Processing {}...".format(phenotype))
-            self.gwas_fp_ = self.gwas_fp + "__chr{chr}"
-            os.makedirs(os.path.dirname(self.gwas_fp_), exist_ok=True)
-            for chr in sorted(int(i) for i in self.chromosomes): # cast to int to be able to order the chromosomes
-                self.output_file = self.gwas_fp_.format(phenotype=phenotype, chr=chr)
-                if os.path.exists(self.output_file) and not self.overwrite_output:
+            self.gwas_fp_ = self.gwas_f_chr_suffix()
+            self.create_gwas_dir()
+            self.output_files_by_pheno = []
+
+            for chromosome in self.sorted_chromosomes():
+                self.output_file = gwas_fp_.format(phenotype=phenotype, chr=chromosome)
+                if self.stop_because_existent():
                     print("Output file already exists, if a new run is desired please delete the previous file.")
                     continue
                 else:
-                    self.execute(str(chr), phenotype)
+                    self.execute(chromosome, phenotype)
+                    self.output_files_by_pheno.append(self.output_file + ".qassoc")
 
-            if self.merge_chromosomes:
+            if self.config.merge_chromosomes_flag:
+                self.merge_chromosomes(phenotype)
 
-                self.output_file = self.gwas_fp.format(phenotype=phenotype)
-                with open(self.output_file + "csv", "w") as merged_fh:
-                    ## TODO: suffix "qassoc" is added ad hoc, it would be better to include as attribute in the class
-                    # self.gwas_fp_ = self.gwas_fp + "__chr{chr}"
-                    partitioned_gwas_files = [self.gwas_fp_.format(phenotype=phenotype, chr=chr) + ".qassoc" for chr in self.chromosomes]
-                    for i, file_chr in enumerate(partitioned_gwas_files):
-                        try:
-                            with open(file_chr) as chr_fh:
-                                for j, line in enumerate(chr_fh):
-                                    if (i == 0 and j == 0) or (j != 0):
-                                        merged_fh.write("%s\n" % "\t".join(line.strip().split()))
-                                os.remove(file_chr)
-                        except:
-                           pass # from IPython import embed; embed()
-
-        if self.delete_temp:
-            os.remove(self.pheno_f_tmp)
+        if self.config.delete_temp:
+            os.remove(self.config.pheno_f_tmp)
 
 
 def main(args):

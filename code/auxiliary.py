@@ -1,11 +1,11 @@
-# copied from http://thoughtsbyclayg.blogspot.com/2008/10/parsing-list-of-numbers-in-python.html
-# with a few modifications
 
 def is_yaml_file(x):
     if isinstance(x, str):
         return x.endswith("yaml") or x.endswith("yml")
     return False
 
+# copied from http://thoughtsbyclayg.blogspot.com/2008/10/parsing-list-of-numbers-in-python.html
+# with a few modifications
 def parseIntSet(nputstr=""):
 
     '''
