@@ -1,3 +1,3 @@
-phenotype_file: "Cardiac_InvNorm_Indexes_Adj_11350.tsv"
+phenotype_file: "cardiac_indices/Cardiac_InvNorm_Indexes_Adj_11350.tsv"
 phenotype_file_tmp: "tmp/Cardiac_InvNorm_Indexes_Adj_11350_tmp.tsv"
 covariates: ""

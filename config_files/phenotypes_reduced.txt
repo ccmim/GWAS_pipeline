@@ -3,7 +3,3 @@ LVESV_automatic
 LVSV_automatic
 LVEF_automatic
 LVM_automatic
-RVEDV_automatic
-RVESV_automatic
-RVSV_automatic
-RVEF_automatic

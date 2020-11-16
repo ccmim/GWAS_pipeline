@@ -1,0 +1,19 @@
+chromosomes: 20-22
+data_dir: "data"
+output_dir: "output"
+phenotype_list: # "phenotypes.txt"
+individuals: "{data_dir}/ids_list/cmr_british_ids.txt"
+filename_patterns: {
+  genotype: "genotype_patterns/genotype_patterns.yaml",
+  phenotype: "phenotype_patterns/phenotype_patterns.yml",
+  gwas: "gwas/{{phenotype}}_{{timestamp}}/gwas__{{phenotype}}{suffix}"
+}
+suffix: "__{covariate_adjustment}__{inverse_normalization}__{ethnicity}"
+suffix_tokens: "filename_rules/filename_rules.yaml"
+exec:
+  plink: "plink"
+options: {
+  covariate_adjustment: True,
+  inverse_normalization: True,
+  ethnicity: "white"
+}

@@ -1,3 +1,9 @@
+output_dir: "output/coma/{run_id}"
+gwas_fp: "GWAS__{pheno}.tsv"
+gwas_fp_rds: "GWAS__{pheno}.rds"
+manhattan_fp: "GWAS__{pheno}__manhattan.png"
+qqplot_fp: "GWAS__{pheno}__QQ-plot.png"
+qqplot_all_fp: "GWAS__all__QQ-plot.png"
 covariate_adjustment:
   False:
   True: "Adj"

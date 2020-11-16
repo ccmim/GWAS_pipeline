@@ -2,21 +2,20 @@ data_dirs:
   genotype: "../data/calls_filtered_31802"
   phenotype: "../data"
   individuals: "../data"
-  output: "../output"
+  output: "../output/"
   tmp: "../data/tmp"
 filename_pattern:
-  phenotype_list: "run_params/phenotypes.txt"
+  phenotype_list: 
   genotype: "ukb_cal_chr{chromosome}_v2_31802_indiv.bed"
   bim: "ukb_cal_chr{chromosome}_v2_31802_indiv.bim"
   fam: "ukb_cal_chr{chromosome}_v2_31802_indiv.fam"
-  phenotype: "Cardiac_Function_Indexes_11350.tsv"
-  phenotype_tmp: "Cardiac_Function_Indexes_11350_tmp.tsv"
+  phenotype:
+  phenotype_tmp:
   # individuals: "only_FID_IID.txt"
-  gwas: "gwas__adj__{phenotype}{suffix}"
-  covariates: "../data/covariates.tsv"
+  gwas: "gwas__{phenotype}{suffix}"
+  covariates: 
 exec:
   sbat: "software_bgenie_sbat/sbat/executables/sbat_centos6.8_dynamic"
   plink: "plink"
-covariate_list: X31, X50, X4079, X21001, X21003
 chromosomes: 1-22
-merge_chromosomes: False
+merge_chromosomes: True

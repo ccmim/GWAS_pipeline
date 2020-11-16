@@ -2,8 +2,15 @@ import os
 import pandas as pd
 import yaml
 from subprocess import call
-from .auxiliary import is_yaml_file, parseIntSet, is_number
+from auxiliary import is_yaml_file, parseIntSet, is_number
 # import logging
+
+def get_repo_rootdir():
+    import shlex
+    from subprocess import check_output
+    repo_rootdir = check_output(shlex.split("git rev-parse --show-toplevel")).strip().decode('ascii')
+    return repo_rootdir
+
 
 class GWASConfig:
 
@@ -19,6 +26,7 @@ class GWASConfig:
 
         self.indiv_f = self.get_indiv_f(config)
         self.bed_fp, self.bim_fp, self.fam_fp = self.get_genotype_files(config)
+        self.__suffix_tokens = config.get("suffix_tokens", {})
         self.gwas_fp = self.get_gwas_f(config)
 
         # other options (not required)
@@ -29,6 +37,9 @@ class GWASConfig:
 
         self.plink_exec = self.get_executable_paths(config)
 
+        #TODO: Implement this
+        self.covariates_f = None
+
         # self.generate_tabix = config.get("generate_tabix", False)
 
     def unfold_config(self, token):
@@ -37,15 +48,18 @@ class GWASConfig:
         If some the fields are paths to other yaml files,
         it will load their contents as values of the corresponding keys
         '''
+
+        repo_rootdir = get_repo_rootdir()
+        yaml_dir = os.path.join(repo_rootdir, "config_files")
         if is_yaml_file(token):
-            print(os.path.join(os.path.dirname(self.yaml_config_file), token))
+            #TODO: COMMENT AND DOCUMENT THIS!!!
             try:
-                token = yaml.safe_load(open(os.path.join(os.path.dirname(self.yaml_config_file), token)))
-            except:
                 token = yaml.safe_load(open(token))
+            except FileNotFoundError:
+                kk = open(os.path.join(yaml_dir, token))
+                token = yaml.safe_load(kk)
         if isinstance(token, dict):
             for k, v in token.items():
-                # print("{0}: {1}".format(k, v))
                 token[k] = self.unfold_config(v)
         return token
 
@@ -68,21 +82,22 @@ class GWASConfig:
 
     def get_phenotypes(self, config):
 
+        repo_rootdir = get_repo_rootdir()
+        yaml_dir = os.path.join(repo_rootdir, "config_files")
         phenotype_list = config.get("phenotype_list", None)
         # if None, use all the phenotypes
         if phenotype_list is None:
-            phenotypes = open(self.pheno_f).readline().strip().split()
+            phenotypes = open(self.pheno_f).readline().strip().split(",")
+            print(phenotypes)
+            #TODO: This column name might vary across datasets!
             phenotypes.remove("IID")
-        elif os.path.exists(os.path.join(os.path.dirname(self.yaml_config_file), phenotype_list)):
-            phenotype_list = os.path.join(
-                os.path.dirname(self.yaml_config_file),
-                phenotype_list
-            )
-            phenotypes_all = [x.strip() for x in open(phenotype_list)]
-            phenotypes = self.phenotypes_all
+        elif isinstance(phenotype_list, str):
+            phenotype_file = os.path.join(yaml_dir, phenotype_list)
+            if os.path.exists(phenotype_file):
+              phenotypes = [x.strip() for x in open(phenotype_file)]
         elif isinstance(phenotype_list, list):
             phenotypes = phenotype_list
-            return phenotypes
+        return phenotypes
 
     def get_indiv_f(self, config):
         return config["filename_patterns"].get("individuals", None)
@@ -99,11 +114,10 @@ class GWASConfig:
         return bed_fp, bim_fp, fam_fp
 
     def get_gwas_f(self, config):
-        output_dir = config.get("output_dir", "")
-        gwas_fp = os.path.join(config["output_dir"], config["filename_patterns"]["gwas"])
+        output_dir = config.get("output_dir", "output")
+        gwas_fp = os.path.join(output_dir, config["filename_patterns"]["gwas"])
         #TODO: finish this!!!
-        #from IPython import embed; embed()
-        gwas_fp = gwas_fp.format(**(config["suffix_tokens"]))
+        gwas_fp = gwas_fp.format(**self.__suffix_tokens)
         return gwas_fp
 
     def get_delete_tmp_flag(self, config):
@@ -180,13 +194,13 @@ class GWAS_Run:
             "GWAS file name: %s" % self.gwas_fp # if self.gwas_f is not None else self.gwas_fp
         ]))
 
-    def generate_phenotype_file(self, input_id_column="ID"):
+    def generate_phenotype_file(self, input_id_column="IID"):
         '''
         Create a phenotype file with the format as required by plink
         IID|FID|phenotype1|phenotype2|...
         '''
 
-        df = pd.read_table(self.pheno_f, sep=',')
+        df = pd.read_table(self.config.pheno_f, sep=',')
 
         df.rename(
             columns={input_id_column: "IID"},
@@ -197,7 +211,7 @@ class GWAS_Run:
 
         cols = df.columns.to_list()
         cols = [cols[-1]] + [cols[0]] + cols[1:-1] # reorder columns: IID|FID|phenotypes
-        cols = [x for x in cols if x in (["IID", "FID"] + self.phenotypes)]
+        cols = [x for x in cols if x in (["IID", "FID"] + self.config.phenotypes)]
         df = df[cols]
 
         # TODO: raise warning if `not_found` is not empty
@@ -243,16 +257,16 @@ class GWAS_Run:
 
         print("  Processing chromosome {}...".format(chromosome))
         command = [
-            self.plink_exec,
-            "--bed", self.bed_fp.format(chromosome=chromosome),
-            "--bim", self.bim_fp.format(chromosome=chromosome),
-            "--fam", self.fam_fp.format(chromosome=chromosome),
-            "--pheno", self.pheno_f_tmp,
+            self.config.plink_exec,
+            "--bed", self.config.bed_fp.format(chromosome=chromosome),
+            "--bim", self.config.bim_fp.format(chromosome=chromosome),
+            "--fam", self.config.fam_fp.format(chromosome=chromosome),
+            "--pheno", self.config.pheno_f_tmp,
             "--pheno-name", phenotype,
             "--out", self.output_file
         ]
 
-        if self.covariates_f is None:
+        if self.config.covariates_f is None:
             command += ["--assoc"]
             # self.output_suffix = ".qassoc"
         else:
@@ -263,8 +277,8 @@ class GWAS_Run:
             ]
             # self.output_suffix = ".assoc.linear"
 
-        if self.ids is not None:
-            command += ["--keep", self.ids]
+        if self.config.indiv_f is not None:
+            command += ["--keep", self.indiv_f]
 
         call(command)
 
@@ -276,8 +290,8 @@ class GWAS_Run:
     def gwas_f_chr_suffix(self):
         return self.config.gwas_fp + "__chr{chr}"
 
-    def create_gwas_dir(self):
-        os.makedirs(os.path.dirname(self.gwas_fp_), exist_ok=True)
+    def create_gwas_dir(self, phenotype):
+        os.makedirs(os.path.dirname(self.gwas_fp_).format(phenotype=phenotype), exist_ok=True)
 
     def sorted_chromosomes(self):
         return [ str(x) for x in sorted([int(y) for y in self.config.chromosomes]) ]
@@ -296,12 +310,13 @@ class GWAS_Run:
         # ]
         # for i, file_chr in enumerate(partitioned_gwas_files):
         for i, file_chr in enumerate(self.output_files_by_pheno):
+
             chr_fh = open(file_chr)
             for j, line in enumerate(chr_fh):
                 if (i == 0 and j == 0) or (j != 0):
                     merged_fh.write("%s\n" % "\t".join(line.strip().split()))
-                    os.remove(file_chr)
             chr_fh.close()
+            os.remove(file_chr)
         merged_fh.close()
 
 
@@ -315,11 +330,11 @@ class GWAS_Run:
             self.timestamp = datetime.datetime
             print("Processing {}...".format(phenotype))
             self.gwas_fp_ = self.gwas_f_chr_suffix()
-            self.create_gwas_dir()
+            self.create_gwas_dir(phenotype)
             self.output_files_by_pheno = []
 
             for chromosome in self.sorted_chromosomes():
-                self.output_file = gwas_fp_.format(phenotype=phenotype, chr=chromosome)
+                self.output_file = self.gwas_fp_.format(phenotype=phenotype, chr=chromosome)
                 if self.stop_because_existent():
                     print("Output file already exists, if a new run is desired please delete the previous file.")
                     continue
@@ -330,7 +345,7 @@ class GWAS_Run:
             if self.config.merge_chromosomes_flag:
                 self.merge_chromosomes(phenotype)
 
-        if self.config.delete_temp:
+        if self.config.delete_temp_flag:
             os.remove(self.config.pheno_f_tmp)
 
 
