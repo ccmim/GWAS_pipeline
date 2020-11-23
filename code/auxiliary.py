@@ -1,3 +1,5 @@
+import os
+import yaml
 
 def is_yaml_file(x):
     if isinstance(x, str):
@@ -55,3 +57,31 @@ def is_number(s):
         return True
     except ValueError:
         return False
+
+
+def get_repo_rootdir():
+    import shlex
+    from subprocess import check_output
+    repo_rootdir = check_output(shlex.split("git rev-parse --show-toplevel")).strip().decode('ascii')
+    return repo_rootdir
+
+
+def unfold_config(token):
+    '''
+    This function reads a yaml configuration file
+    If some the fields are paths to other yaml files,
+    it will load their contents as values of the corresponding keys
+    '''
+    repo_rootdir = get_repo_rootdir()
+    yaml_dir = os.path.join(repo_rootdir, "config_files")
+    if is_yaml_file(token):
+        #TODO: COMMENT AND DOCUMENT THIS!!!
+        try:
+            token = yaml.safe_load(open(token))
+        except FileNotFoundError:
+            kk = open(os.path.join(yaml_dir, token))
+            token = yaml.safe_load(kk)
+    if isinstance(token, dict):
+        for k, v in token.items():
+            token[k] = unfold_config(v)
+    return token

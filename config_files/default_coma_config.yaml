@@ -1,4 +1,4 @@
-chromosomes: 22
+chromosomes: 1-22
 data_dir: "data"
 output_dir: "output/coma"
 individuals: "{data_dir}/ids_list/cmr_british_ids.txt"

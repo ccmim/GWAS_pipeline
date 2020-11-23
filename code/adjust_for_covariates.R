@@ -9,8 +9,8 @@ library(stringr)
 
 parser <- ArgumentParser()
 parser$add_argument("-i", "--input_file")
-parser$add_argument("-c", "--covariates_file")
 parser$add_argument("-o", "--output_file")
+parser$add_argument("-c", "--covariates_file", default="data/covariates.csv")
 parser$add_argument("--covariates")
 parser$add_argument("--white_list", default=NULL)
 parser$add_argument("--phenotypes", default=NULL, nargs="+")
@@ -30,14 +30,20 @@ field_codes <- c(
   "SBP"="X4080" #systolic blood pressure
 )
 
+if (!file.exists(args$input_file)) {
+  quit(status = 1)
+}
+
 covariates_df <- read.csv(args$covariates_file)
 
-pheno_df <- read.table(args$input_file, sep = ",", header=TRUE) # %>% select(-subset) # subset has the partition (train, test) to which subject belongs. We don't need that now.
+pheno_df <- read.table(args$input_file, sep = ",", header=TRUE) %>% select(-subset) # subset has the partition (train, test) to which subject belongs. We don't need that now.
 
 if (!is.null(args$phenotypes)) {
   pheno_names <- args$phenotypes
 } else {
   pheno_names <- colnames(pheno_df)
+  pheno_names <- pheno_names[pheno_names != "ID"]
+  print(pheno_names)
 }
 
 if (!is.null(args$phenotypes_black_list)) {
@@ -72,17 +78,23 @@ for (pheno in pheno_names) {
 
 # Reorder columns
 pheno_df <- cbind(pheno_df %>% select(-starts_with("X")), pheno_df %>% select(starts_with("X")))
-print(head(pheno_df))
 
 # Retrieve adjusted phenotypes
 adj_phenos <- colnames(pheno_df)[grepl(pattern = "adj", colnames(pheno_df))]
 
 # Rank inverse-normalization
-kk <- apply(pheno_df %>% select(-ID, -starts_with("X")), 2, function(x) qnorm((rank(x,na.last="keep")-0.5)/sum(!is.na(x))))
-pheno_df <- cbind(pheno_df %>% select(ID), as.data.frame(kk))
-pheno_df <- pheno_df %>% rename(IID=ID)
-print(head(pheno_df))
+kk <- apply(
+  pheno_df %>% select(-ID, -starts_with("X")),
+  MARGIN = 2,
+  FUN = function(x) qnorm((rank(x,na.last="keep")-0.5)/sum(!is.na(x)))
+)
+
+pheno_df <- cbind(pheno_df %>% select(ID) %>% rename(IID=ID), as.data.frame(kk))
 rm(kk)
+
+pheno_df <- cbind(pheno_df["IID"], pheno_df %>% select(ends_with("adj")))
+print(head(pheno_df))
+
 
 filename <- args$output_file
 write_delim(x = pheno_df, filename, col_names = TRUE, delim = ",", na = "NA")

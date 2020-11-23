@@ -4,6 +4,7 @@ library(glue)
 
 library(argparse)
 
+# print(system("git rev-parse --show-toplevel", intern = TRUE))
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 
 parser <- ArgumentParser()
@@ -12,25 +13,33 @@ parser$add_argument("--phenotypes", default=sapply(0:15, function(x) paste0("z",
 parser$add_argument("--title", default=FALSE, action="store_true")
 parser$add_argument("--cache_rds", action="store_true", default=FALSE)
 parser$add_argument("--qqplot_pooled", action="store_true", default=FALSE)
+parser$add_argument("--color_odd_chr", default="mediumblue")
+parser$add_argument("--color_even_chr", default="lightblue")
 args <- parser$parse_args()
 
 run_ids <- args$gwas_folder
     
 output_dir <- "output/coma/{run_id}"
-gwas_fp <- file.path(output_dir, "GWAS__{pheno}.tsv")
+gwas_fp <- file.path(output_dir, "GWAS__{pheno}_GBR.tsv")
 gwas_fp_rds <- file.path(output_dir, "GWAS__{pheno}.rds")
+gwas_summary_fp <- file.path(output_dir, "GWAS__{pheno}_GBR__regionwise_summary.tsv")
 manhattan_fp <- file.path(output_dir, "GWAS__{pheno}__manhattan.png")
 qqplot_fp <- file.path(output_dir, "GWAS__{pheno}__QQ-plot.png")
 qqplot_all_fp <- file.path(output_dir, "GWAS__all__QQ-plot.png")
 
-color1 <- "mediumblue"
-color2 <- "lightblue"
+color1 <- args$color_odd_chr # "mediumblue"
+color2 <- args$color_even_chr # "lightblue"
 
-color1 <- "hotpink4"
-color2 <- "palevioletred2"
-
+# color1 <- "hotpink4"
+# color2 <- "palevioletred2"
 
 # params_df <- read.csv("~/data/coma/run_parameters.csv", header=TRUE) %>% filter(run_id %in% run_ids)
+
+# Process LD-independent genomic regions
+regions <- read.delim("data/ld_indep_regions/fourier_ls-all_EUR_hg19.bed", stringsAsFactors = F)
+regions <- regions %>% group_by(chr) %>% mutate(id = paste0(row_number()))
+regions$chr <-  sub("\\s+$", "", regions$chr)
+regions <- regions %>% mutate(id=paste(chr, id, sep = "_")) %>% ungroup()
 
 for (run_id in run_ids) {
   
@@ -76,6 +85,19 @@ for (run_id in run_ids) {
     pp <- qqman::qq(gwas_df$P, main=plot_title, col = "blue4")
     print(pp)
     dev.off()
+    
+    gwas_list <- list()
+    
+    # Produce region-wise summary (best p-value per region)
+    for(chr_ in 1:22) {
+      reduced_regions <- regions %>% filter(chr==paste0("chr", chr_))
+      reduced_gwas <- gwas_df %>% filter(CHR==chr_)
+      reduced_gwas <- reduced_gwas %>% mutate(region=cut(BP, breaks=reduced_regions$start, labels=head(reduced_regions$id, -1)))
+      gwas_list <- c(gwas_list, list(reduced_gwas))
+    }
+    
+    best_p_per_region <- bind_rows(gwas_list) %>% filter(!is.na(region)) %>% group_by(region) %>% slice(which.min(P)) %>% ungroup()
+    write.csv(best_p_per_region, file = glue(gwas_summary_fp), sep = "\t", quote = FALSE, row.names = FALSE)
   }
   
   if (length(pvals) == 0)
