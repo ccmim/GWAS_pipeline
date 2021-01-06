@@ -1,2 +1,6 @@
 output*
 figures*
+deprecated
+.ipynb_checkpoints
+.idea
+__pycache__
