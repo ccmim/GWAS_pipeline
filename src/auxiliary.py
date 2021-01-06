@@ -68,9 +68,8 @@ def get_repo_rootdir():
 
 def unfold_config(token):
     '''
-    This function reads a yaml configuration file
-    If some the fields are paths to other yaml files,
-    it will load their contents as values of the corresponding keys
+    Parameters: a recursive structure composed of a path to a yaml file or a dictionary composed of such structures.
+    Returns: A dictionary with all the yaml files replaces by their content.
     '''
     repo_rootdir = get_repo_rootdir()
     yaml_dir = os.path.join(repo_rootdir, "config_files")

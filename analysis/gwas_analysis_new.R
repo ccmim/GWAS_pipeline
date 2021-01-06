@@ -10,6 +10,7 @@ setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 parser <- ArgumentParser()
 parser$add_argument("--gwas_folder", nargs="+")
 parser$add_argument("--phenotypes", default=sapply(0:15, function(x) paste0("z", x, "_adj")) )
+# parser$add_argument("--phenotypes", default=sapply(0:15, function(x) paste0("z", x)) )
 parser$add_argument("--title", default=FALSE, action="store_true")
 parser$add_argument("--cache_rds", action="store_true", default=FALSE)
 parser$add_argument("--qqplot_pooled", action="store_true", default=FALSE)
@@ -21,6 +22,7 @@ run_ids <- args$gwas_folder
     
 output_dir <- "output/coma/{run_id}"
 gwas_fp <- file.path(output_dir, "GWAS__{pheno}_GBR.tsv")
+gwas_fp <- file.path(output_dir, "GWAS__{pheno}.tsv")
 gwas_fp_rds <- file.path(output_dir, "GWAS__{pheno}.rds")
 gwas_summary_fp <- file.path(output_dir, "GWAS__{pheno}_GBR__regionwise_summary.tsv")
 manhattan_fp <- file.path(output_dir, "GWAS__{pheno}__manhattan.png")
@@ -41,6 +43,8 @@ regions <- regions %>% group_by(chr) %>% mutate(id = paste0(row_number()))
 regions$chr <-  sub("\\s+$", "", regions$chr)
 regions <- regions %>% mutate(id=paste(chr, id, sep = "_")) %>% ungroup()
 
+gwas_files <- character()
+
 for (run_id in run_ids) {
   
   print(glue("{run_id}..."))
@@ -57,6 +61,8 @@ for (run_id in run_ids) {
       # print(glue(gwas_fp))
       next
     }
+    
+    gwas_files <- c(gwas_files, glue(gwas_fp))
     
     if (file.exists(glue(gwas_fp_rds))) {
         gwas_f <- glue(gwas_fp_rds)
@@ -82,7 +88,7 @@ for (run_id in run_ids) {
     
     # Q-Q PLOT
     png(glue(qqplot_fp), res=100, width = 1000, height = 1000)
-    pp <- qqman::qq(gwas_df$P, main=plot_title, col = "blue4")
+    pp <- qqman::qq(gwas_df$P, main=plot_title, cex.axis=2, col = "blue4")
     print(pp)
     dev.off()
     

@@ -1,4 +1,3 @@
 bed: "{data_dir}/genotypes/calls/ukb_cal_chr{{chromosome}}_v2_31803_indiv.bed"
 bim: "{data_dir}/genotypes/calls/ukb_cal_chr{{chromosome}}_v2_31803_indiv.bim"
 fam: "{data_dir}/genotypes/calls/ukb_cal_chr{{chromosome}}_v2_31803_indiv.fam"
-
