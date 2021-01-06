@@ -2,7 +2,8 @@ import os
 import pandas as pd
 import yaml
 from subprocess import call
-from code.auxiliary import *
+# from code.auxiliary import *
+from .auxiliary import *
 # import logging
 
 
@@ -68,7 +69,8 @@ class GWAS_Run:
             "--fam", self.config.fam_fp.format(chromosome=chromosome),
             "--pheno", self.config.pheno_f_tmp,
             "--pheno-name", phenotype,
-            "--out", self.output_file
+            "--out", self.output_file,
+            "--threads", "8"
         ]
 
         if self.config.covariates_f is None:
@@ -81,9 +83,20 @@ class GWAS_Run:
                 "--parameters", ",".join(self.cov_index_list)
             ]
             # self.output_suffix = ".assoc.linear"
+        
 
         if self.config.indiv_f is not None:
             command += ["--keep", self.indiv_f]
+
+        # Quality controls
+        if self.config.qc["hwe_pval_thres"] is not None:
+            command += ["--hwe", str(self.config.qc["hwe_pval_thres"])]
+        if self.config.qc["snp_missing_rate_thres"] is not None:
+            command += ["--geno", str(self.config.qc["snp_missing_rate_thres"])]
+        if self.config.qc["sample_missing_rate_thres"] is not None:
+            command += ["--mind", str(self.config.qc["sample_missing_rate_thres"])]
+        if self.config.qc["maf_thres"] is not None:
+            command += ["--maf", str(self.config.qc["maf_thres"])]
 
         call(command)
 
@@ -147,14 +160,21 @@ class GWAS_Run:
         if self.config.delete_temp_flag:
             os.remove(self.config.pheno_f_tmp)
 
-
+ 
 class GWASConfig:
 
     def __init__(self, config):
-        
+        '''
+          Parameters (dict, string): configuration parameters for GWAS. It can be:
+            1. a dictionary or 
+            2. the path to a YAML file
+        '''
+
+        # if `config` is a path to a YAML, store the path in an attribute
         if is_yaml_file(config):
-          self.yaml_config_file = yaml_config_file
-          config = unfold_config(yaml_config_file)
+          self.yaml_config_file = config
+        
+        config = unfold_config(config)
 
         self.data_dir = self.get_data_dir(config)
         self.pheno_f = self.get_pheno_file(config)
@@ -166,20 +186,22 @@ class GWASConfig:
         self.__suffix_tokens = config.get("suffix_tokens", {})
         self.gwas_fp = self.get_gwas_f(config)
 
-        # other options (not required)
-        self.delete_temp_flag = False # self.get_delete_tmp_flag(config)
-        self.merge_chromosomes_flag = self.get_merge_chromosomes_flag(config)
-        self.overwrite_output_flag = self.get_overwrite_output_flag(config)
         self.chromosomes = self.get_chromosomes(config)
 
         self.plink_exec = self.get_executable_paths(config)
 
+        self.qc = self.get_qc(config)
+
+        # other options (not required)
+        self.delete_temp_flag = False # self.get_delete_tmp_flag(config)
+        self.merge_chromosomes_flag = self.get_merge_chromosomes_flag(config)
+        self.overwrite_output_flag = self.get_overwrite_output_flag(config)
+        
         #TODO: Implement this
         self.covariates_f = None
 
         #TODO: Implement TABIX indexing
         # self.generate_tabix = config.get("generate_tabix", False)
-
 
     #TODO: use @property decorator
     def get_data_dir(self, config):
@@ -187,7 +209,9 @@ class GWASConfig:
 
     def get_pheno_file(self, config):
         pheno_f = config["filename_patterns"]["phenotype"]["phenotype_file"]
-        if os.path.isabs(pheno_f) or self.data_dir is None or os.path.exists(pheno_f):
+        if os.path.isabs(pheno_f) or \
+           self.data_dir is None or \
+           os.path.exists(pheno_f):
             return pheno_f
         else:
             return os.path.join(self.data_dir, pheno_f)
@@ -239,15 +263,6 @@ class GWASConfig:
         gwas_fp = gwas_fp.format(**self.__suffix_tokens)
         return gwas_fp
 
-    def get_delete_tmp_flag(self, config):
-        return config.get("delete_temp", True)
-
-    def get_merge_chromosomes_flag(self, config):
-        return config.get("merge_chromosomes", True)
-
-    def get_overwrite_output_flag(self, config):
-        return config.get("overwrite_output", True)
-
     def get_chromosomes(self, config):
         chromosomes = parseIntSet(str(config["chromosomes"]))
         chromosomes = [x for x in chromosomes if is_number(x)]
@@ -264,7 +279,6 @@ class GWASConfig:
 
     def generate_output_name(self):
         pass
-
 
     def get_covariates(self, config):
 
@@ -283,7 +297,6 @@ class GWASConfig:
             self.covariate_list = [x.strip() for x in config["covariate_list"].split(",")]
             self.get_covariate_column_indices()
 
-
     def get_options(self, config):
         options = config["options"]
         options_suffix_tokens = {}
@@ -293,3 +306,16 @@ class GWASConfig:
                 self.output_suffix = config["suffix"].format(**options_suffix_tokens)
         else:
             self.output_suffix = config["suffix"]
+
+    def get_qc(self, config):
+        qc_params = ( "hwe_pval_thres", "snp_missing_rate_thres", "sample_missing_rate_thres", "maf_thres")
+        return { x: config["quality_control"].get(x, None) for x in qc_params }
+          
+    def get_delete_tmp_flag(self, config):
+        return config.get("delete_temp", True)
+
+    def get_merge_chromosomes_flag(self, config):
+        return config.get("merge_chromosomes", True)
+
+    def get_overwrite_output_flag(self, config):
+        return config.get("overwrite_output", True)
