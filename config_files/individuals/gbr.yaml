@@ -1,0 +1,2 @@
+white_lists: "{data_dir}/ids_list/cmr_british_ids.txt"
+black_lists: 

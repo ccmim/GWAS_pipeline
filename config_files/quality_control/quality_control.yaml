@@ -1,0 +1,4 @@
+hwe_pval_thres: 1e-6
+snp_missing_rate_thres: 0.1
+sample_missing_rate_thres: 0.1
+maf_thres: 0.01
