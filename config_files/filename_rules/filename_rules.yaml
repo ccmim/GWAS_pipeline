@@ -1,20 +1,13 @@
-output_dir: "output/coma/{run_id}"
-gwas_fp: "GWAS__{pheno}.tsv"
-gwas_fp_rds: "GWAS__{pheno}.rds"
-manhattan_fp: "GWAS__{pheno}__manhattan.png"
-qqplot_fp: "GWAS__{pheno}__QQ-plot.png"
-qqplot_all_fp: "GWAS__all__QQ-plot.png"
-covariate_adjustment:
-  False:
-  True: "Adj"
-inverse_normalization:
-  False:
-  True: "InvNorm"
-segmentation_method:
-  manual: "Manual"
-  automatic: "Auto"
-  manual_plus_automatic: "Man_And_Auto"
-ethnicity:
-  white: "EUR"
-  british: "GBR"
-  all: "All_Ethnicities"
+covariates: {
+  "config_files/covariates/std_covariates.yaml": "std_covariates",
+  "config_files/covariates/std_covariates_and_z5.yaml": "std_covariates_adj_by_z5"
+}
+sample_white_lists: {
+  !!python/tuple ["data/ids_list/cmr_british_ids.txt"]: "GBR_ALL",
+  !!python/tuple ["data/ids_list/cmr_british_ids.txt", "data/ids_list/women.txt"]: "GBR_WOMEN",
+  !!python/tuple ["data/ids_list/cmr_british_ids.txt", "data/ids_list/men.txt"]: "GBR_MEN"
+}
+quality_control: {
+  "config_files/quality_control/quality_control.yaml": "qc",
+  "config_files/quality_control/no_quality_control.yaml": "no_qc"
+}

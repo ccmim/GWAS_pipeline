@@ -1,0 +1,11 @@
+data/covariates.csv:
+  - id: "eid"
+  - X50 # Height
+  - X4079 # DBP
+  - X4080 # SBP
+  - X21001 # BMI
+  - X21003 # Age
+  - X31 # Sex
+data/coma_output/2020-09-11_02-13-41/latent_space.csv:
+  - id: "ID"
+  - z5

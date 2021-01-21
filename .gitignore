@@ -4,3 +4,4 @@ deprecated
 .ipynb_checkpoints
 .idea
 __pycache__
+config_files/coma
