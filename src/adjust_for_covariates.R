@@ -2,6 +2,8 @@
 library(argparse)
 library(yaml)
 
+# TODO: output should be ONLY the adjusted phenotypes, without any suffix
+
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 source("analysis/helperFunctions.R")
 
