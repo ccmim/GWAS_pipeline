@@ -29,7 +29,7 @@ def adjust_for_covariates(config):
     command += ["-i", config["filenames"]["phenotype"]]
     command += ["-o", config["filenames"]["phenotype_intermediate"]]
     command += ["--samples_white_list"] + list(config["sample_white_lists"])
-    command += ["--covariates"] + [config["covariates"]]
+    command += ["--covariates_file"] + [config["covariates"]]
     command += ["--phenotypes"] + [x.split("_adj")[0] for x in config["phenotype_list"]]
     command += ["--phenotypes_black_list", "ID", "subset"]
     command += ["--keep_non_cov_adj"]
@@ -116,8 +116,8 @@ def prepare_config(args):
         config["filename_patterns"]["gwas"] = args.gwas_file
 
 
-    # if args.coma_experiment is not None:
-    #     config["experiment"] = args.coma_experiment
+    if args.coma_experiment is not None:
+        config["experiment"] = args.coma_experiment
     
     for _fp in ["phenotype", "phenotype_intermediate", "tmpdir", "gwas"]:
         fp = config["filename_patterns"][_fp]
@@ -168,6 +168,7 @@ if __name__ == "__main__":
     parser.add_argument("--gwas_file", default=None)
     parser.add_argument("--sample_white_lists", nargs="+", default=None)
     parser.add_argument("--sample_black_lists", nargs="+", default=None)
+    parser.add_argument("--coma_experiment", default=None)
     parser.add_argument("--chromosomes", "-chr", default=None, help="Chromosomes as a list of comma-separated ranges, e.g. \"1-4,6,10-15\"")
     parser.add_argument("--phenotypes", "-ph", nargs="+", default=None, help="List of phenotypes to perform GWAS on.")
     parser.add_argument("--name_rules", default="config_files/filename_rules/filename_rules.yaml")

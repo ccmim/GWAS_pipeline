@@ -8,7 +8,7 @@ sample_black_lists: null
 
 covariates: "config_files/covariates/std_covariates.yaml"
 
-quality_control: "config_files/quality_control/quality_control.yaml"
+quality_control: "config_files/quality_control/no_quality_control.yaml"
 
 filename_patterns: {
   # input
