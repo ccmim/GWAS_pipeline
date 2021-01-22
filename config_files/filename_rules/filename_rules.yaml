@@ -1,8 +1,10 @@
 covariates: {
+  "config_files/covariates/std_covariates_no_SBP.yaml": "std_covariates_no_SBP",
   "config_files/covariates/std_covariates.yaml": "std_covariates",
   "config_files/covariates/std_covariates_and_z5.yaml": "std_covariates_adj_by_z5"
 }
 sample_white_lists: {
+  !!python/tuple ["data/ids_list/cmr_ids.txt"]: "ALL_ETHNICITIES",
   !!python/tuple ["data/ids_list/cmr_british_ids.txt"]: "GBR_ALL",
   !!python/tuple ["data/ids_list/cmr_british_ids.txt", "data/ids_list/women.txt"]: "GBR_WOMEN",
   !!python/tuple ["data/ids_list/cmr_british_ids.txt", "data/ids_list/men.txt"]: "GBR_MEN"

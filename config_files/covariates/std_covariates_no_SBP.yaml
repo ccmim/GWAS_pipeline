@@ -1,0 +1,7 @@
+data/covariates.csv:
+  - id: "eid"
+  - X50 # Height
+  - X4079 # DBP
+  - X21001 # BMI
+  - X21003 # Age
+  - X31 # Sex
