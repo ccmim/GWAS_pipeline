@@ -5,3 +5,4 @@ deprecated
 .idea
 __pycache__
 config_files/coma
+data
