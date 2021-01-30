@@ -23,7 +23,7 @@ output_dir <- file.path(args$output_folder, "{args$gwas_folder}")
 # text files
 gwas_fp <- file.path(output_dir, paste0(args$gwas_pattern, ".tsv"))
 gwas_fp_rds <- file.path(output_dir, paste0(args$gwas_pattern, ".rds"))
-gwas_summary_fp <- file.path(output_dir, paste0(args$gwas_pattern, "__regionwise_summary.tsv"))
+gwas_summary_fp <- file.path(output_dir, "summaries", paste0(args$gwas_pattern, "__regionwise_summary.tsv"))
 
 # print(gwas_fp)
 # print(gwas_fp_rds)
@@ -111,6 +111,8 @@ for (run_id in args$gwas_folder) {
     }
     
     best_p_per_region <- bind_rows(gwas_list) %>% filter(!is.na(region)) %>% group_by(region) %>% slice(which.min(P)) %>% ungroup()
+    summary_file <- glue(gwas_summary_fp)
+    dir.create(dirname(summary_file))
     write.csv(best_p_per_region, file = glue(gwas_summary_fp), sep = "\t", quote = FALSE, row.names = FALSE)
   }
   

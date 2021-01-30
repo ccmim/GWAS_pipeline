@@ -5,6 +5,8 @@ import yaml
 from subprocess import call
 # from code.auxiliary import *
 from .auxiliary import *
+import shutil
+import glob
 # import logging
 
 
@@ -75,8 +77,11 @@ class GWAS_Run:
     def gwas_f_chr_suffix(self):
         return self.config.gwas_fp + "__chr{chr}"
 
-    def create_gwas_dir(self, phenotype):
-        os.makedirs(os.path.dirname(self.gwas_fp_).format(phenotype=phenotype), exist_ok=True)
+    def create_gwas_dir(self, phenotype):        
+        gwas_dir = os.path.dirname(self.gwas_fp_).format(phenotype=phenotype)        
+        os.makedirs(gwas_dir, exist_ok=True)
+        os.makedirs(os.path.join(gwas_dir, "logs"), exist_ok=True)
+        return gwas_dir
 
     def sorted_chromosomes(self):
         return [ str(x) for x in sorted([int(y) for y in self.config.chromosomes]) ]
@@ -109,7 +114,7 @@ class GWAS_Run:
 
             print("Processing {}...".format(phenotype))
             self.gwas_fp_ = self.gwas_f_chr_suffix()
-            self.create_gwas_dir(phenotype)
+            gwas_dir = self.create_gwas_dir(phenotype)
             self.output_files_by_pheno = []
 
             for chromosome in self.sorted_chromosomes():
@@ -125,8 +130,19 @@ class GWAS_Run:
             if self.config.merge_chromosomes_flag:
                 self.merge_chromosomes(phenotype)
 
+            for log_file in glob.glob(os.path.join(gwas_dir, "*log")):                
+                log_file_basename = os.path.basename(log_file)
+                shutil.move(log_file, os.path.join(gwas_dir, "logs", log_file_basename))
+
+            for irem_file in glob.glob(os.path.join(gwas_dir, "*irem")):                
+                irem_file_basename = os.path.basename(irem_file)
+                shutil.move(irem_file, os.path.join(gwas_dir, "logs", irem_file_basename))
+
         if self.config.delete_temp_flag:
             os.remove(self.config.pheno_f)
+
+        
+
 
 class GWASConfig:
 

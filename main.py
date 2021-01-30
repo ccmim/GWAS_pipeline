@@ -30,7 +30,7 @@ def adjust_for_covariates(config):
     command += ["-o", config["filenames"]["phenotype_intermediate"]]
     command += ["--samples_white_list"] + list(config["sample_white_lists"])
     command += ["--covariates_file"] + [config["covariates"]]
-    command += ["--phenotypes"] + [x.split("_adj")[0] for x in config["phenotype_list"]]
+    # command += ["--phenotypes"] + [x.split("_adj")[0] for x in config["phenotype_list"]]
     command += ["--phenotypes_black_list", "ID", "subset"]
 
     print(" ".join(command))
@@ -43,7 +43,7 @@ def generate_summary_and_figures(config):
     command += ["--output_folder", "."]
     command += ["--gwas_folder", os.path.dirname(config["filename_patterns"]["gwas"])] # "output/traditional_indices" + "/" + config["suffix"],        
     command += ["--gwas_pattern", "GWAS__{phenotype}__" + config["suffix"]]
-    command += ["--phenotypes"] + config["phenotype_list"]
+    # command += ["--phenotypes"] + config["phenotype_list"]
     command += ["--qqplot_pooled", "--cache_rds"]
 
     print(" ".join(command))
@@ -183,5 +183,5 @@ if __name__ == "__main__":
 
     config = prepare_config(args)
 
-    pprint(config)
+    # pprint(config)
     main(config)
