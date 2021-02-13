@@ -2,8 +2,6 @@
 library(argparse)
 library(yaml)
 
-# TODO: output should be ONLY the adjusted phenotypes, without any suffix
-
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 source("analysis/helperFunctions.R")
 source("data/preprocess_ukbb_data.R")
@@ -21,6 +19,7 @@ parser$add_argument("--samples_white_list", nargs="+", default="data/ids_list/cm
 parser$add_argument("--samples_black_list", default=NULL)
 parser$add_argument("--phenotypes", default=NULL, nargs="+")
 parser$add_argument("--phenotypes_black_list", default=NULL, nargs="+")
+parser$add_argument("--gwas_software", default=NULL, nargs="+")
 args <- parser$parse_args()
 
 ## AUXILIARY FUNCTIONS
@@ -92,9 +91,14 @@ for (i in seq_along(pheno_names)) {
   pheno_df[, pheno_names[i]] <- new_col
 }
 
-# For compatibility with PLINK
-pheno_df <- pheno_df %>% rename(IID=ID) %>% mutate(FID=IID)
-pheno_df <- pheno_df[,c("FID", "IID", pheno_names)]
+if (tolower(args$gwas_software) == "plink") {
+  # For compatibility with PLINK
+  pheno_df <- pheno_df %>% rename(IID=ID) %>% mutate(FID=IID)
+  pheno_df <- pheno_df[,c("FID", "IID", pheno_names)]
+} else if (tolower(args$gwas_software) == "bgenie") {
+  pheno_df$ID <- NULL
+  pheno_df <- pheno_df[samples, pheno_names]
+}
 
 # Write output into file
 dir.create(dirname(args$output_file), recursive = TRUE)
