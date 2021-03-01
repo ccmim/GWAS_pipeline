@@ -19,7 +19,7 @@ parser$add_argument("--samples_white_list", nargs="+", default="data/ids_list/cm
 parser$add_argument("--samples_black_list", default=NULL)
 parser$add_argument("--phenotypes", default=NULL, nargs="+")
 parser$add_argument("--phenotypes_black_list", default=NULL, nargs="+")
-parser$add_argument("--gwas_software", default=NULL, nargs="+")
+parser$add_argument("--gwas_software", default="plink", nargs="+")
 args <- parser$parse_args()
 
 ## AUXILIARY FUNCTIONS
@@ -90,6 +90,8 @@ for (i in seq_along(pheno_names)) {
   new_col <- inverse_normalise(new_col)
   pheno_df[, pheno_names[i]] <- new_col
 }
+
+print(head(pheno_df))
 
 if (tolower(args$gwas_software) == "plink") {
   # For compatibility with PLINK
