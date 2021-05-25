@@ -15,6 +15,8 @@ For pre-processing data, it requires the `tidyverse` package.
 For performing GWAS, it requires installing the tools `plink 1.9` (for `bed/bim/fam` files) and/or `BGENIE 1.4.1` (for `bgen` files).
 For performing downstream analysis, it requires the `qqman` package.
 
+### Conda environment
+TO DO: provide file with the requirements to build the environment.
 
 ## Usage
 The pipeline consists of scripts for:
