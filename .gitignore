@@ -6,3 +6,5 @@ deprecated
 __pycache__
 config_files/coma
 data
+*html
+*pdf
