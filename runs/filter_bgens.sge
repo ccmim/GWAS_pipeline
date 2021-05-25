@@ -1,0 +1,11 @@
+#Run with current environment (-V) and in the current directory (-cwd)
+#$ -cwd
+
+#Request some time- min 15 mins - max 48 hours
+#$ -l h_rt=15:00:00
+
+#Request some memory per core
+#$ -l h_vmem=16G
+PATH=/home/home01/scrb/bin:$PATH
+
+qctool -g ukb_imp_chr${CHR}_40k_maf_gt_1e-3.bgen -og filtered_chr${CHR}.bgen -excl-rsids hwe_pval_lt_1e-5.txt maf_lt_1e-2.txt info_lt_0.3.txt
