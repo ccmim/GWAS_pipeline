@@ -1,6 +1,7 @@
 import os
 from subprocess import call
-from SGE_utils import *
+arc = __import__("ARC-helpers") 
+from arc.SGE_utils import *
 odir = "../hwe_pval_gt_1e-5__maf_gt_1e-2__info_gt_0.3"
 
 experiment = "2020-09-11_02-13-41"
