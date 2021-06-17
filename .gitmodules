@@ -1,0 +1,3 @@
+[submodule "utils/summary-gwas-imputation"]
+	path = utils/summary-gwas-imputation
+	url = git@github.com:hakyimlab/summary-gwas-imputation.git
