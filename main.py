@@ -177,7 +177,7 @@ if __name__ == "__main__":
     parser.add_argument("--gwas_file", default=None)
     parser.add_argument("--sample_white_lists", nargs="+", default=None)
     parser.add_argument("--sample_black_lists", nargs="+", default=None)
-    parser.add_argument("--coma_experiment", "-e", default=None)
+    parser.add_argument("--coma_experiment", "-e", default=None, "If the file patterns contain the {experiment} token, this is replaced by this argument. Meant to be used with CoMA experiment, hence its name.")
     parser.add_argument("--quality_control", "-qc", default=None)
     parser.add_argument("--chromosomes", "-chr", default=None, help="Chromosomes as a list of comma-separated ranges, e.g. \"1-4,6,10-15\"")    
     parser.add_argument("--name_rules", default="config_files/filename_rules/filename_rules.yaml")
