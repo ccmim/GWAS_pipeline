@@ -1,5 +1,0 @@
-LVEDV_automatic
-LVESV_automatic
-LVSV_automatic
-LVEF_automatic
-LVM_automatic
