@@ -1,0 +1,20 @@
+data/covariates.csv:
+  - id: "eid"
+  - X50 # Height
+  - X4079 # DBP
+  - X4080 # SBP
+  - X21001 # BMI
+  - X21003 # Age
+  - X31 # Sex
+data/genomicPCs_unrelated_GBR.tsv:
+  - id: "ID"
+  - PC1
+  - PC2
+  - PC3
+  - PC4
+  - PC5
+  - PC6
+  - PC7
+  - PC8
+  - PC9
+  - PC10
