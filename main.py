@@ -63,7 +63,6 @@ def prepare_config(args):
                 option_value = config[token]            
             tokens[token] = name_rules[token][option_value]
 
-    print(tokens)
     suffix = args.suffix.format(**tokens)    
     
     ###############
@@ -109,6 +108,7 @@ def prepare_config(args):
     if args.chromosomes is not None:
         config["chromosomes"] = args.chromosomes
 
+    config["gwas_software"] = args.gwas_software
     # pprint(config)
     return config
 
@@ -175,9 +175,10 @@ if __name__ == "__main__":
     parser.add_argument("--covariates", default=None)
     parser.add_argument("--intermediate_phenotype_file", default=None)
     parser.add_argument("--gwas_file", default=None)
+    parser.add_argument("--gwas_software", default="plink", help="GWAS tool. Currently only plink and BGENIE are supported")
     parser.add_argument("--sample_white_lists", nargs="+", default=None)
     parser.add_argument("--sample_black_lists", nargs="+", default=None)
-    parser.add_argument("--coma_experiment", "-e", default=None, "If the file patterns contain the {experiment} token, this is replaced by this argument. Meant to be used with CoMA experiment, hence its name.")
+    parser.add_argument("--coma_experiment", "-e", default=None, help="If the file patterns contain the {experiment} token, this is replaced by this argument. Meant to be used with CoMA experiment, hence its name.")
     parser.add_argument("--quality_control", "-qc", default=None)
     parser.add_argument("--chromosomes", "-chr", default=None, help="Chromosomes as a list of comma-separated ranges, e.g. \"1-4,6,10-15\"")    
     parser.add_argument("--name_rules", default="config_files/filename_rules/filename_rules.yaml")

@@ -8,3 +8,4 @@ config_files/coma
 data
 *html
 *pdf
+tests/examples

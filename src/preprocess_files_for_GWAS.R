@@ -27,7 +27,7 @@ get_args <- function() {
   
   # Output
   parser$add_argument("-o", "--output_file", required=TRUE)
-  parser$add_argument("--gwas_software", default="plink", help="Which software to format the phenotype file for. Currently only plink and bgenie are supported.")
+  parser$add_argument("--gwas_software", default="plink", help="Which software to format the phenotype file for. Currently only Plink and BGENIE are supported.")
  
   args <- parser$parse_args()
   args
