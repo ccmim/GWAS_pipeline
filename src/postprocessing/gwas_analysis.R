@@ -1,7 +1,6 @@
 library(tidyverse)
 library(qqman)
 library(glue)
-
 library(argparse)
 
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))

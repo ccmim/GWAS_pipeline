@@ -144,7 +144,7 @@ def generate_summary_and_figures(config):
     ### TODO: Use a configuration file for the file name patterns
 
     gwas_folder = os.path.dirname(config["filename_patterns"]["gwas"])
-    command  = ["Rscript", "analysis/gwas_analysis.R"]
+    command  = ["Rscript", "src/postprocessing/gwas_analysis.R"]
     command += ["--output_folder", "."]
     command += ["--gwas_folder", gwas_folder] # "output/traditional_indices" + "/" + config["suffix"],        
     command += ["--gwas_pattern", "GWAS__{phenotype}__" + config["suffix"]]
