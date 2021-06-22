@@ -1,0 +1,163 @@
+---
+title: "GWAS report"
+author: "Rodrigo Bonazzola"
+output:
+  html_document:
+    theme: flatly
+    code_folding: hide
+---
+  
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(glue)
+
+data_dir <- "~/data/PhD/UKBB/"
+GWAS_DIR <- "/home/rodrigo/GWAS/output/coma"
+
+gwas_paths <- list(
+  "qqplot" = file.path(GWAS_DIR, "{experiment}/{suffix}/figures/GWAS__{as.character(z)}__{suffix}__QQ-plot.png"),
+  "manhattan" = file.path(GWAS_DIR, "{experiment}/{suffix}/figures/GWAS__{as.character(z)}__{suffix}__manhattan.png") #,
+  # "pooled_qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__all__QQ-plot.png")
+)
+```
+
+This report aims to summarise the findings after following Bernard's suggestions.
+
+## Filtering GWAS sample
+
+Only British individuals were kept, based on self-reported ethnicity (data field `21000`, value `1001`).
+In order to identify related individuals, kinship coefficients were obtained from the UK Biobank, by running the command `ukbgene rel`.
+```{r}
+gbr_ids_file <- glue("{data_dir}/subject_ids/british_ids.txt")
+cmr_gbr_ids_file <- glue("{data_dir}/subject_ids/cmr_british_ids.txt")
+gbr_ids <- read.csv(gbr_ids_file, header = TRUE)$ID
+ids <- read.csv(glue("{data_dir}/subject_ids/IDs_32k.csv"), header = FALSE)$V1
+
+kinship_df <- read.table(glue("{data_dir}/ukb11350_rel_s488226.dat"), header = TRUE)
+kinship_df <- kinship_df %>% filter(ID1 %in% ids & ID2 %in% ids)
+ids_related <- as.character(kinship_df$ID1)
+```
+
+There were `r length(gbr_ids)` British individuals in the full cohort, and from them `r length(setdiff(intersect(ids, gbr_ids), ids_related))` unrelated individuals with CMR were processed.
+
+### LVEF < 50%
+```{r}
+cardiac_indices_df <-  read.csv(glue("{data_dir}/cardiac_indices/Cardiac_Function_Indexes_11350.csv"))
+hist(cardiac_indices_df$LVEF_automatic, main="Distribution of LV ejection fraction", xlab="LVEF")
+
+n_ef_lt_50 <- length(cardiac_indices_df$LVEF_automatic[cardiac_indices_df$LVEF_automatic < 50])
+```
+
+`r n_ef_lt_50` subjects with LVEF < 50%.
+
+
+### Diagnoses
+```{r, echo=FALSE}
+read_icd10_ids <- function(icd10) {
+  read.csv(glue("{data_dir}/subject_ids/icd10/{icd10}.txt"))[,1]
+}
+```
+
+
+```{r}
+hypertension_ids_all <- read_icd10_ids("I10")
+hypertension_ids_cmr <- intersect(ids, hypertension_ids_all)
+```
+#### Hypertension (HT)
+- `r length(hypertension_ids_all)` individuals with hypertension.
+Among them, `r length(hypertension_ids_cmr)` British individuals also with CMR.
+
+```{r}
+icd10_codes_acuteMI <- c(
+  "I210", # 
+  "I211", #
+  "I212", #
+  "I213", #
+  "I214", #
+  "I219"  #
+)
+acuteMI_ids_all <- unlist(sapply(icd10_codes_acuteMI, read_icd10_ids))
+acuteMI_cmr <- intersect(ids, acuteMI_ids_all)
+```
+#### Acute myorcardial infarction (AcMI)
+- `r length(acuteMI_ids_all)` individuals with acute MI.
+Among them, `r length(acuteMI_cmr)` British individuals also with CMR.
+
+```{r}
+icd10_codes_CM <- c(
+  "I420", #
+  "I421", #
+  "I422", #
+  "I424", #
+  "I425", #
+  "I426", #
+  "I427", #
+  "I428", #
+  "I429"  #
+)
+
+CM_ids_all <- unlist(sapply(icd10_codes_CM, read_icd10_ids))
+CM_cmr <- intersect(ids, CM_ids_all)
+```
+#### Cardiomyopathies (CM)
+- `r length(CM_ids_all)` individuals with cardiomyopathies.
+Among them, `r length(CM_cmr)` British individuals also with CMR.
+
+```{r}
+icd10_codes_AP <- c(
+  "I200", #
+  "I201", #
+  "I208", #
+  "I209"  #
+)
+
+AP_ids_all <- unlist(sapply(icd10_codes_AP, read_icd10_ids))
+AP_cmr <- intersect(ids, AP_ids_all)
+```
+#### Angina Pectoris (AP)
+- `r length(AP_ids_all)` individuals with angina pectoris.
+Among them, `r length(AP_cmr)` British individuals also with CMR.
+
+
+### GWAS results
+
+
+```{r myfile-1-plot}
+
+filtering <- c(
+  "No filtering"="std_covariates__GBR__qc",
+  "EF < 50%"="std_covariates__GBR__excl_EF_lt_50__qc",
+  "EF < 50% + HT"="std_covariates__GBR__excl_EF_lt_50_and_hypertension__qc",
+  "EF < 50% + HT + CM"="std_covariates__GBR__excl_EF_lt_50_and_hypertension_acuteMI__qc",
+  "EF < 50% + HT + CM + acMI"="std_covariates__GBR__excl_EF_lt_50_and_hypertension_acuteMI_Cardiomyopathies__qc",
+  "EF < 50% + HT + CM + acMI + AP"="std_covariates__GBR__excl_EF_lt_50_and_hypertension_acuteMI_Cardiomyopathies_AnginaPectoris__qc"
+)
+
+```
+
+### Unscaled meshes: $z_{\text{LVV}}$
+```{r, echo = F, results = 'asis'}
+experiment <- "2020-09-30_12-36-48"
+for (i in 1:length(filtering)) {
+  z = "z0"
+  caption <- names(filtering)[i]
+  suffix <- filtering[i]
+  cat(paste0('\n#### ', caption, ":"))
+  cat(paste0('\n![', '](', glue(gwas_paths$manhattan), ')\n\n'))
+}
+```
+
+### Scaled meshes: $z_{\text{LVSph}}$
+```{r, echo = F, results = 'asis'}
+experiment <- "2020-09-11_02-13-41"
+
+for (i in 1:length(filtering)) {
+  z = "z5"
+  caption <- names(filtering)[i]
+  suffix <- filtering[i]
+  cat(paste0('\n#### ', caption))
+  cat(paste0('\n![', '](', glue(gwas_paths$manhattan), ')\n\n'))
+}
+```
+
