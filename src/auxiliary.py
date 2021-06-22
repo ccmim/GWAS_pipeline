@@ -66,9 +66,11 @@ def get_repo_rootdir():
     return repo_rootdir
 
 
-def unfold_config(token):
+def unfold_config(token, no_unfolding_for=[]):
     '''
-    Parameters: a recursive structure composed of a path to a yaml file or a dictionary composed of such structures.
+    Parameters: 
+      token: a recursive structure composed of a path to a yaml file or a dictionary composed of such structures.
+      no_unfolding_for: a list of dict keys for which the yaml shouldn't be unfolded, and instead kept as a path
     Returns: A dictionary with all the yaml files replaces by their content.
     '''
     repo_rootdir = get_repo_rootdir()
@@ -82,5 +84,6 @@ def unfold_config(token):
             token = yaml.safe_load(kk)
     if isinstance(token, dict):
         for k, v in token.items():
-            token[k] = unfold_config(v)
+            if k not in no_unfolding_for:
+                token[k] = unfold_config(v, no_unfolding_for)
     return token
