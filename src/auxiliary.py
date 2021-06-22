@@ -1,6 +1,8 @@
 import os
 import yaml
 
+# TODO: move this to utils folder
+
 def is_yaml_file(x):
     if isinstance(x, str):
         return x.endswith("yaml") or x.endswith("yml")
