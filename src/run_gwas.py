@@ -2,7 +2,7 @@ import os
 import re
 import pandas as pd
 import yaml
-from subprocess import call
+import subprocess
 # from code.auxiliary import *
 from .auxiliary import *
 import shutil
@@ -70,7 +70,7 @@ class GWAS_Run:
         if self.config.qc["maf_thres"] is not None:
             command += ["--maf", str(self.config.qc["maf_thres"])]
 
-        call(command)
+        subprocess.call(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     #####################################################################
 
@@ -172,7 +172,7 @@ class GWASConfig:
         # self.pheno_f_tmp = self.get_pheno_tmp_file(config) # temporal file with phenotype values
 
         self.pheno_f = self.get_pheno_file(config)
-#         self.pheno_f_tmp = os.path.join(self.tmpdir, "phenotypes.tsv") # temporal file with phenotype values
+        # self.pheno_f_tmp = os.path.join(self.tmpdir, "phenotypes.tsv") # temporal file with phenotype values
         self.phenotypes = self.get_phenotypes(config)
         self.tmpdir = config["filenames"]["tmpdir"]
         os.makedirs(self.tmpdir, exist_ok=True)
@@ -215,8 +215,9 @@ class GWASConfig:
         phenotype_list = config.get("phenotype_list", None)
         # if None, use all the phenotypes
         if phenotype_list is None:
+            #TODO: by default, guess the column separator
             phenotypes = open(self.pheno_f).readline().strip().split("\t")
-            #TODO: This column name might vary across datasets!
+            #TODO: This column name might vary across datasets, it's better to provide it as part of the phenotype configuration
             # print(phenotypes)
             phenotypes.remove("IID")
             phenotypes.remove("FID")

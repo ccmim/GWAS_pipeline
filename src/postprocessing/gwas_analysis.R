@@ -1,7 +1,10 @@
-library(tidyverse)
-library(qqman)
-library(glue)
-library(argparse)
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(qqman)
+  library(glue)
+  library(argparse)
+  library(logging)
+})
 
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 
@@ -13,11 +16,14 @@ parser$add_argument("--phenotypes", nargs="+", default=sapply(0:15, function(x) 
 
 parser$add_argument("--title", default=FALSE, action="store_true")
 parser$add_argument("--cache_rds", action="store_true", default=FALSE)
+parser$add_argument("--overwrite_rds", action="store_true", default=FALSE)
 parser$add_argument("--qqplot_pooled", action="store_true", default=FALSE)
 parser$add_argument("--color_odd_chr", default="mediumblue")
 parser$add_argument("--color_even_chr", default="lightblue")
 args <- parser$parse_args()
 
+
+# TODO: put every file pattern into a configuration file
 output_dir <- file.path(args$output_folder, "{args$gwas_folder}")
 # text files
 gwas_fp <- file.path(output_dir, paste0(args$gwas_pattern, ".tsv"))
@@ -43,22 +49,29 @@ color2 <- args$color_even_chr
 # params_df <- read.csv("~/data/coma/run_parameters.csv", header=TRUE) %>% filter(run_id %in% run_ids)
 
 # Process LD-independent genomic regions
-regions <- read.delim("data/ld_indep_regions/fourier_ls-all_EUR_hg19.bed", stringsAsFactors = F)
-regions <- regions %>% group_by(chr) %>% mutate(id = paste0(row_number()))
-regions$chr <-  sub("\\s+$", "", regions$chr)
-regions <- regions %>% mutate(id=paste(chr, id, sep = "_")) %>% ungroup()
+load_ld_indep_regions <- function(ld_indep_regions_file="data/ld_indep_regions/fourier_ls-all_EUR_hg19.bed") {
+  regions <- read.delim(ld_indep_regions_file, stringsAsFactors = F)
+  regions <- regions %>% group_by(chr) %>% mutate(id = paste0(row_number()))
+  regions$chr <-  sub("\\s+$", "", regions$chr)
+  regions <- regions %>% mutate(id=paste(chr, id, sep = "_")) %>% ungroup()  
+  regions
+}
 
+regions <- load_ld_indep_regions()
 gwas_files <- character()
 
 for (run_id in args$gwas_folder) {
   
-  print(glue("{run_id}..."))
+  # TOFIX: run_id is not what I want here.
+  logging::loginfo(glue("Processing experiment with ID {run_id}"))
+  
   dir.create(glue::glue(figs_dir))
   pvals <- vector(length = 0)
   
   # gwas_figs_dir <- file.path(run_id, "figs")
   # if (!dir.exists(gwas_figs_dir))
   #   dir.create(gwas_figs_dir)
+  rds_log_flag <- TRUE
   
   for (phenotype in args$phenotypes) {
     
@@ -69,17 +82,25 @@ for (run_id in args$gwas_folder) {
     
     gwas_files <- c(gwas_files, glue(gwas_fp))
     
-    if (file.exists(glue(gwas_fp_rds))) {
-        gwas_f <- glue(gwas_fp_rds)
-        gwas_df <- readRDS(gwas_f)
+    gwas_f <- glue(gwas_fp)
+    gwas_f_rds <- glue(gwas_fp_rds)
+    
+    if (file.exists(gwas_f_rds) && !args$overwrite_rds) {
+        if (rds_log_flag){
+          logging::logwarn(glue("Found a previously cached RDS files (e.g. {gwas_f_rds}). If you want a new file please run this script again with the --overwrite_rds flag"))
+          rds_log_flag <- FALSE
+        }
+        gwas_df <- readRDS(gwas_f_rds)
     } else {
-        gwas_f <- glue(gwas_fp)
+        logging::loginfo(glue("Reading the GWAS file in text format: {gwas_file}.") )
         gwas_df <- read_tsv(gwas_f, col_names = TRUE)
-        if (args$cache_rds)
+        if (args$cache_rds) {
+          logging::loginfo(glue("Caching GWAS in RDS format."))
           saveRDS(gwas_df, glue(gwas_fp_rds))
+        }
     }
     
-    print(glue("  {phenotype}..."))
+    logging::loginfo(glue("Processing {phenotype}..."))
     
     gwas_df <- gwas_df %>% filter(!is.na(P) & P != 0)
     pvals <- c(pvals, gwas_df$P)
@@ -90,13 +111,13 @@ for (run_id in args$gwas_folder) {
     png(glue(manhattan_fp), res=100, width = 3000, height = 1000)
     # pp <- qqman::manhattan(gwas_df, main=plot_title, cex = 1.5, cex.lab = 2, cex.axis = 2, suggestiveline = F, col = c(color1, color2), ylim=c(0,20))
     pp <- qqman::manhattan(gwas_df, main=plot_title, cex = 1.5, cex.lab = 2, cex.axis = 2, suggestiveline = F, col = c(color1, color2))
-    print(pp)
+    # print(pp)
     dev.off()
     
     # Q-Q PLOT
     png(glue(qqplot_fp), res=100, width = 1000, height = 1000)
     pp <- qqman::qq(gwas_df$P, main=plot_title, cex.axis=2, col = "blue4")
-    print(pp)
+    # print(pp)
     dev.off()
     
     gwas_list <- list()
@@ -119,9 +140,11 @@ for (run_id in args$gwas_folder) {
     next
   
   # POOLED PHENOTYPES' Q-Q PLOT
-  png(glue(qqplot_all_fp), res=100, width = 800, height = 800)
+  logging::loginfo(glue("Gathering all the associations ({length(pvals)}) into a single QQ-plot..."))
+  qqplot_all_f <- glue(qqplot_all_fp)
+  png(qqplot_all_f, res=100, width = 800, height = 800)
   pp <- qqman::qq(pvals, main=glue("{run_id}"), col = "blue4")
-  print(pp)
+  # print(pp)
   dev.off()
   
 }

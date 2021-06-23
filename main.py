@@ -15,6 +15,7 @@ from copy import deepcopy
 import src
 from src.auxiliary import unfold_config
 from src.run_gwas import GWAS_Run
+import warnings
 
 ############################################################################################################
 ############################################################################################################
@@ -33,11 +34,14 @@ def extract_formatter_tokens(pattern):
 
 
 def prepare_config(args):
-    
-    config = yaml.load(open(args.yaml_config_file))
-    
-    ### Generate suffix
-    name_rules = yaml.load(open(args.name_rules))
+
+    #  TODO: solve this warning. This is just a workaround to prevent too many warning messages to show up.
+    #  YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")    
+      config = yaml.load(open(args.yaml_config_file))
+      ### Generate suffix
+      name_rules = yaml.load(open(args.name_rules))
 
     if args.covariates is not None:
         config["covariates_config"] = args.covariates
@@ -127,17 +131,20 @@ def adjust_for_covariates(config):
     
     # TOFIX: this should not be hardcoded! It will limit the applicability to other phenotypes
     command += ["--columns_to_exclude", "ID", "subset"]    
-    command += ["--covariates_config_yaml"] + [config["covariates_config"]]
-    command += ["--output_file", config["filenames"]["phenotype_intermediate"]]
+    command += ["--covariates_config_yaml"] + [config["covariates_config"]]    
 
     if config["sample_white_lists"] is not None:
       command += ["--samples_to_include"] + list(config["sample_white_lists"])
     if config["sample_black_lists"] is not None:
       command += ["--samples_to_exclude"] + list(config["sample_black_lists"])
-        
+
+    command += ["--output_file", config["filenames"]["phenotype_intermediate"]]
+    command += ["--gwas_software", config["gwas_software"]]
+
+    print("\nPreprocessing the phenotype file to perform GWAS on {}.".format(config["gwas_software"]))    
     print(" ".join(command))
     call(command)
-
+    print("\n")
 
 def generate_summary_and_figures(config):
     
@@ -152,7 +159,10 @@ def generate_summary_and_figures(config):
       command += ["--phenotypes"] + config["phenotype_list"]
     command += ["--qqplot_pooled", "--cache_rds"]
 
+    print("\nCreating Manhattan plots, Q-Q plots and region-wise summaries.")    
     print(" ".join(command))
+    print("\n")
+    
     call(command)
 
 

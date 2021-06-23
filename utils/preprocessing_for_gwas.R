@@ -72,7 +72,7 @@ generate_covariates_df <- function(covariates_config_yaml, impute_with_mean_for=
     covariates_df <- covariates_df %>% impute_na(impute_with_mean_for)
   
   covariates_df <- covariates_df %>% na.omit
-  covariates_df <- covariates_df %>% select(c("ID", covariate_names))
+  covariates_df <- covariates_df %>% select(c("ID", all_of(covariate_names)))
   covariates_df
   
 }
@@ -101,7 +101,7 @@ mean_across_visits <- function(df, columns, columns_to_reduce, id_column="ID") {
   }
   
   # remove columns for each individual visit to the assessment centre
-  df <- df %>% select(id_column, columns)
+  df <- df %>% select(all_of(id_column), all_of(columns))
   df
 }
 
@@ -192,6 +192,7 @@ format_df_for_tool <- function(pheno_df, software="plink") {
 
 generate_adj_pheno <- function(pheno_file, pheno_names, exclude_columns, samples_to_include, samples_to_exclude, covariates_config, gwas_software, output_file=NULL) {
   
+  #TODO: Add logging
   raw_pheno_df <- read_raw_pheno(pheno_file, pheno_names, exclude_columns)
   raw_pheno_df <- raw_pheno_df %>% exclude_samples(samples_to_include, samples_to_exclude)
   # print(head(raw_pheno_df))
@@ -202,13 +203,11 @@ generate_adj_pheno <- function(pheno_file, pheno_names, exclude_columns, samples
 
   adj_pheno_df <- format_df_for_tool(adj_pheno_df, gwas_software)
   
-
-  print(output_file)
   # Write output into file
   if (!is.null(output_file)) {
-    dir.create(dirname(output_file), recursive = TRUE)
+    dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
     write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "NA")
+  } else {
+    adj_pheno_df
   }
-  
-  print(str(adj_pheno_df))
 }
