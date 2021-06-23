@@ -1,7 +1,9 @@
 # install.packages("reader") # to use reader::get.delim (to infer table delimiter)
+# install.packages("ukbtools") # to use reader::get.delim (to infer table delimiter)
 suppressPackageStartupMessages({
   library(tidyverse)
   library(stringr)
+  library(glue)
 })
  
 get_include_list <- function(samples_to_include=NULL) {  
@@ -174,39 +176,65 @@ create_adj_pheno_df <- function(raw_pheno_df, covariates_df) {
 }
 
 
-format_df_for_tool <- function(pheno_df, software="plink") {
+format_df_for_tool <- function(pheno_df, gwas_software="plink", ukb.sample=NULL) {
   
   pheno_names <- colnames(pheno_df %>% select(-ID))
 
-  if (tolower(software) == "plink") {
+  if (tolower(gwas_software) == "plink") {
     # For compatibility with PLINK
+    logging::loginfo("Formatting table for Plink...")
     pheno_df <- pheno_df %>% rename(IID=ID) %>% mutate(FID=IID)
-    pheno_df <- pheno_df[,c("FID", "IID", pheno_names)]
-  } else if (tolower(software) == "bgenie") {
-    pheno_df$ID <- NULL
-    pheno_df <- pheno_df[samples, pheno_names]
+    pheno_df <- pheno_df[, c("FID", "IID", pheno_names)]
+  } else if (tolower(gwas_software) == "bgenie") {
+    logging::loginfo("Formatting table for BGENIE...")
+    if (is.null(ukb.sample)) {
+      logging::logerror("BGEN's sample file has not been provided and is required when running BGENIE. Aborting execution...")
+      stop(2)
+    }
+    suppressMessages({
+      sample_df <- ukbtools::ukb_gen_read_sample(file=ukb.sample)
+    })
+    names(sample_df)[1] <- "ID"
+    sample_df <- mutate(sample_df, ID=as.character(ID))
+    pheno_df <- sample_df %>% left_join(pheno_df, by = "ID") %>% select("ID", all_of(pheno_names)) # select(.dots = pheno_names)
+    # pheno_df <- ukbtools::ukb_gen_write_bgenie(pheno_df, sample_df, ukb.id="ID", ukb.variables=pheno_names)
   }
   pheno_df
 }
 
 
-generate_adj_pheno <- function(pheno_file, pheno_names, exclude_columns, samples_to_include, samples_to_exclude, covariates_config, gwas_software, output_file=NULL) {
+generate_adj_pheno <- function(pheno_file, pheno_names, exclude_columns, samples_to_include, samples_to_exclude, covariates_config, gwas_software, output_file=NULL, ukb.sample=NULL) {
   
-  #TODO: Add logging
+  logging::loginfo("Loading phenotype file {pheno_file}..." %>% glue)
   raw_pheno_df <- read_raw_pheno(pheno_file, pheno_names, exclude_columns)
+  logging::loginfo("Excluding subjects...")
   raw_pheno_df <- raw_pheno_df %>% exclude_samples(samples_to_include, samples_to_exclude)
   # print(head(raw_pheno_df))
+  
+  logging::loginfo("Loading covariates file...")
   covariates_df <- generate_covariates_df(covariates_config)
+  
   # print(head(covariates_df))
+  logging::loginfo("Generating covariate-adjusted phenotypes...")
   adj_pheno_df <- create_adj_pheno_df(raw_pheno_df, covariates_df)
 
-
-  adj_pheno_df <- format_df_for_tool(adj_pheno_df, gwas_software)
+  adj_pheno_df <- format_df_for_tool(adj_pheno_df, gwas_software, ukb.sample)
   
   # Write output into file
   if (!is.null(output_file)) {
+    if (file.exists(output_file)) {
+      logging::logwarn("Intermediate phenotype file, located at:\n\t{output_file}\nalready exists and won't be overwritten. If this isn't what you want, delete the file and run this R script again." %>% glue)
+      quit(save = "no", status = 0)
+    }
     dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
-    write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "NA")
+    if (tolower(gwas_software) == "plink") {
+      logging::loginfo("Creating file of adjusted phenotypes (formatted for Plink in {output_file}" %>% glue)
+      write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "NA")
+    } else if (tolower(gwas_software) == "bgenie") {
+      #TODO: support other NA strings
+      logging::loginfo("Creating file of adjusted phenotypes (formatted for BGENIE in {output_file}" %>% glue)
+      write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "-999")
+    }
   } else {
     adj_pheno_df
   }

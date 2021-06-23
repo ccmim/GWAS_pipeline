@@ -3,7 +3,6 @@ import re
 import pandas as pd
 import yaml
 import subprocess
-# from code.auxiliary import *
 from .auxiliary import *
 import shutil
 import glob
@@ -15,9 +14,6 @@ class GWAS_Run:
     def __init__(self, yaml_config_file):
         self.config = GWASConfig(yaml_config_file)
         # self.filename_rules = config["suffix_tokens"]
-
-        # Generate
-        # self.generate_phenotype_file()
 
     def __str__(self):
         return ("\n".join([
@@ -70,6 +66,7 @@ class GWAS_Run:
         if self.config.qc["maf_thres"] is not None:
             command += ["--maf", str(self.config.qc["maf_thres"])]
 
+        #TODO: add option to output PLINK messages to the console
         subprocess.call(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     #####################################################################
@@ -160,7 +157,6 @@ class GWASConfig:
             config = yaml.load(open(config))
 
         # TODO: when the dict key is a tuple for which element order is irrelevant, use frozenset instead.            
-
         # self.suffix = config["suffix"].format(**tokens)
         
         # End of actions that need to be performed prior to unnesting the nested yaml files

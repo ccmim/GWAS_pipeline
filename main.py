@@ -35,8 +35,9 @@ def extract_formatter_tokens(pattern):
 
 def prepare_config(args):
 
-    #  TODO: solve this warning. This is just a workaround to prevent too many warning messages to show up.
-    #  YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+    # TODO: solve this warning. 
+    # This is just a workaround to prevent too many warning messages to show up.
+    # Warning message is: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")    
       config = yaml.load(open(args.yaml_config_file))
@@ -113,7 +114,10 @@ def prepare_config(args):
         config["chromosomes"] = args.chromosomes
 
     config["gwas_software"] = args.gwas_software
-    # pprint(config)
+
+    if config["gwas_software"] == "bgenie":
+        config["bgen_sample_file"] = args.bgen_sample_file
+    
     return config
 
 
@@ -127,20 +131,21 @@ def adjust_for_covariates(config):
     if config["phenotype_list"] is not None:
       command += ["--phenotypes"] + config["phenotype_list"]
     else:
-      pass # use all phenotypes (all columns except those excluded in the following line)
+      pass # default behaviour, i.e. use all phenotypes (all columns except those excluded in the following line)
     
-    # TOFIX: this should not be hardcoded! It will limit the applicability to other phenotypes
+    # TOFIX: this should not be hardcoded! It will limit the applicability to phenotype files with other formats
     command += ["--columns_to_exclude", "ID", "subset"]    
     command += ["--covariates_config_yaml"] + [config["covariates_config"]]    
 
     if config["sample_white_lists"] is not None:
       command += ["--samples_to_include"] + list(config["sample_white_lists"])
     if config["sample_black_lists"] is not None:
-      command += ["--samples_to_exclude"] + list(config["sample_black_lists"])
+      command += ["--samples_to_exclude"] + list(config["sample_black_lists"])    
 
     command += ["--output_file", config["filenames"]["phenotype_intermediate"]]
     command += ["--gwas_software", config["gwas_software"]]
-
+    command += ["--bgen_sample_file", config["bgen_sample_file"]]
+    
     print("\nPreprocessing the phenotype file to perform GWAS on {}.".format(config["gwas_software"]))    
     print(" ".join(command))
     call(command)
@@ -169,7 +174,7 @@ def generate_summary_and_figures(config):
 def main(config):
         
     adjust_for_covariates(config)
-    GWAS_Run(config).run()
+    # GWAS_Run(config).run()
     yaml.dump(config, open(os.path.join(os.path.dirname(config["filename_patterns"]["gwas"]), "config.yaml"), "w"))
     generate_summary_and_figures(config)
 
@@ -182,12 +187,14 @@ if __name__ == "__main__":
     parser.add_argument("--yaml_config_file", "-c", default="config_files/ref_config.yaml", help="Reference configuration file. The rest of the command line arguments overwrite the configuration items.")
     parser.add_argument("--phenotype_file", default=None)
     parser.add_argument("--phenotypes", "-ph", nargs="+", default=None, help="List of phenotypes to perform GWAS on.")
-    parser.add_argument("--covariates", default=None)
-    parser.add_argument("--intermediate_phenotype_file", default=None)
-    parser.add_argument("--gwas_file", default=None)
+    parser.add_argument("--covariates", default=None, help="YAML file with the configuration specifying the covariates to adjust for.")
+    parser.add_argument("--phenotype_intermediate", default=None, help="File pattern for the intermediate phenotype file, with covariate-adjusted scores formatted according to the GWAS tool to be used.")
+    parser.add_argument("--gwas_file", default=None, help="File pattern for the output GWAS file")
     parser.add_argument("--gwas_software", default="plink", help="GWAS tool. Currently only plink and BGENIE are supported")
     parser.add_argument("--sample_white_lists", nargs="+", default=None)
     parser.add_argument("--sample_black_lists", nargs="+", default=None)
+    #TODO: add to the configuration file    
+    parser.add_argument("--bgen_sample_file", default=None, help="Only required if --gwas_software option is BGENIE. It's the sample file linked to the BGEN file.")
     parser.add_argument("--coma_experiment", "-e", default=None, help="If the file patterns contain the {experiment} token, this is replaced by this argument. Meant to be used with CoMA experiment, hence its name.")
     parser.add_argument("--quality_control", "-qc", default=None)
     parser.add_argument("--chromosomes", "-chr", default=None, help="Chromosomes as a list of comma-separated ranges, e.g. \"1-4,6,10-15\"")    

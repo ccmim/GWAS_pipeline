@@ -11,4 +11,4 @@ python main.py \
   --gwas_file tests/examples/{experiment}/{suffix}/GWAS__{{phenotype}}__{suffix} \
   --suffix "test_{covariates_config}__{sample_white_lists}__{quality_control}" \
   --gwas_software plink \
-  --chromosomes 6  
+  --chromosomes 1-22 

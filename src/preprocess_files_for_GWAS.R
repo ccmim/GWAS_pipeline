@@ -3,7 +3,7 @@ library(argparse)
 
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 
-source("utils/preprocessing_for_gwas.R")
+source("utils/preprocessing_for_gwas_helpers.R")
 
 # This script loads a phenotype file, adjusts for covariates, 
 # inverse-normalize the values and excludes samples
@@ -20,6 +20,7 @@ get_args <- function() {
   # Samples
   parser$add_argument("--samples_to_include", nargs="+", default="data/ids_list/cmr_british_ids.txt")
   parser$add_argument("--samples_to_exclude", nargs="+", default=NULL)
+  parser$add_argument("--bgen_sample_file", default=NULL)
   
   # Covariates
   parser$add_argument("-c", "--covariates_config_yaml", required=TRUE)
@@ -30,8 +31,18 @@ get_args <- function() {
   parser$add_argument("--gwas_software", default="plink", help="Which software to format the phenotype file for. Currently only Plink and BGENIE are supported.")
  
   args <- parser$parse_args()
+  args$gwas_software <- tolower(args$gwas_software)
+  
+  check_args(args)
   args
   
+}
+
+check_args <- function(args) {
+  if (args$gwas_software == "bgenie" && is.null(args$bgen_sample_file)) {
+    logging::logerror("BGEN's sample file has not been provided and is required when running BGENIE. Aborting execution...")
+    stop(2)
+  }
 }
 
 
@@ -41,7 +52,8 @@ main <- function(args) {
     args$samples_to_include, args$samples_to_exclude,
     args$covariates_config_yaml,
     args$gwas_software,
-    args$output_file
+    args$output_file,
+    args$bgen_sample_file
   )
 }
 
