@@ -1,0 +1,46 @@
+chromosomes: 1-22
+
+sample_white_lists:
+  - "data/ids_list/cmr_british_unrelated.txt"
+
+sample_black_lists: 
+  - "data/ids_list/EF_lt_50__old_segmentation.txt"
+  - "data/ids_list/icd10/I10.txt"
+  - "data/ids_list/icd10/I210.txt" 
+  - "data/ids_list/icd10/I211.txt" 
+  - "data/ids_list/icd10/I212.txt"
+  - "data/ids_list/icd10/I213.txt" 
+  - "data/ids_list/icd10/I214.txt" 
+  - "data/ids_list/icd10/I219.txt" 
+  - "data/ids_list/icd10/I420.txt" 
+  - "data/ids_list/icd10/I421.txt"
+  - "data/ids_list/icd10/I422.txt" 
+  - "data/ids_list/icd10/I424.txt" 
+  - "data/ids_list/icd10/I425.txt" 
+  - "data/ids_list/icd10/I426.txt" 
+  - "data/ids_list/icd10/I427.txt" 
+  - "data/ids_list/icd10/I428.txt" 
+  - "data/ids_list/icd10/I429.txt"
+
+covariates: "config_files/covariates/std_covariates.yaml"
+
+quality_control: "config_files/quality_control/quality_control.yaml"
+
+filename_patterns: {
+  # input
+  genotype: "config_files/genotype_patterns/genotype_patterns.yaml",
+  phenotype: "data/coma_output/{experiment}/latent_space.csv",
+  phenotype_intermediate: "data/coma_output/{experiment}/{suffix}/latent_space.csv",
+  tmpdir: "data/tmp/coma/{experiment}/{suffix}",
+  # output
+  gwas: "output/coma/{experiment}/{suffix}/GWAS__{{phenotype}}__{suffix}"
+}
+
+exec:
+  plink: "plink"
+
+# data_dir: "data"
+# output_dir: "output/coma"
+# experiment: "2020-09-11_02-13-41"
+
+# suffix: "{covariates}__{sample_white_lists}__{quality_control}"
