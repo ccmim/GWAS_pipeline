@@ -13,6 +13,7 @@ filename_patterns: {
   # input
   genotype: "config_files/genotype_patterns/genotype_patterns.yaml",
   phenotype: "data/coma_output/{experiment}/latent_space.csv",
+  # intermediate files
   phenotype_intermediate: "data/coma_output/{experiment}/{suffix}/latent_space.csv",
   tmpdir: "data/tmp/coma/{experiment}/{suffix}",
   # output

@@ -1,7 +1,7 @@
 # install.packages("reader") # to use reader::get.delim (to infer table delimiter)
 # install.packages("ukbtools") # to use reader::get.delim (to infer table delimiter)
 suppressPackageStartupMessages({
-  library(tidyverse)
+  library(dplyr)
   library(stringr)
   library(glue)
 })
@@ -55,7 +55,8 @@ generate_covariates_df <- function(covariates_config_yaml, impute_with_mean_for=
   for (covfile in names(covariates)) {
 
     df_ <- read.csv(covfile, sep=reader::get.delim(covfile)) 
-    df_ <- df_ %>% rename(ID=covariates[[covfile]][[1]][["id"]]) %>% mutate(ID=as.character(ID))
+    id_colname <- covariates[[covfile]][[1]][["id"]]
+    df_ <- df_ %>% rename(ID=all_of(id_colname)) %>% mutate(ID=as.character(ID))
     
     new_covariate_names <- unlist(covariates[[covfile]][2:length(covariates[[covfile]])])
     covariate_names <- c(covariate_names, new_covariate_names)
@@ -67,9 +68,9 @@ generate_covariates_df <- function(covariates_config_yaml, impute_with_mean_for=
       covariates_df <- left_join(covariates_df, df_, by="ID")
     }
   }
-  
-  covariates_df <- mean_across_visits(covariates_df, covariate_names, colnames(covariates_df)[startsWith(colnames(covariates_df), "X")])
-  
+
+  covariates_df <- covariates_df %>% mean_across_visits(., covariate_names, colnames(.)[startsWith(colnames(.), "X")])
+
   if (!is.null(impute_with_mean_for))
     covariates_df <- covariates_df %>% impute_na(impute_with_mean_for)
   
@@ -139,7 +140,7 @@ exclude_samples <-  function(pheno_df, samples_to_include, samples_to_exclude, r
    } else {
      pheno_df[samples,] <- NA
    }
-   pheno_df %>% rownames_to_column("ID")
+   pheno_df %>% tibble::rownames_to_column("ID")
 }
 
 
@@ -203,7 +204,10 @@ format_df_for_tool <- function(pheno_df, gwas_software="plink", ukb.sample=NULL)
 }
 
 
-generate_adj_pheno <- function(pheno_file, pheno_names, exclude_columns, samples_to_include, samples_to_exclude, covariates_config, gwas_software, output_file=NULL, ukb.sample=NULL) {
+generate_adj_pheno <- function(
+  pheno_file, pheno_names, exclude_columns, 
+  samples_to_include, samples_to_exclude, ukb.sample=NULL,
+  covariates_config, gwas_software, output_file=NULL) {
   
   logging::loginfo("Loading phenotype file {pheno_file}..." %>% glue)
   raw_pheno_df <- read_raw_pheno(pheno_file, pheno_names, exclude_columns)
@@ -229,11 +233,11 @@ generate_adj_pheno <- function(pheno_file, pheno_names, exclude_columns, samples
     dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
     if (tolower(gwas_software) == "plink") {
       logging::loginfo("Creating file of adjusted phenotypes (formatted for Plink in {output_file}" %>% glue)
-      write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "NA")
+      readr::write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "NA")
     } else if (tolower(gwas_software) == "bgenie") {
       #TODO: support other NA strings
       logging::loginfo("Creating file of adjusted phenotypes (formatted for BGENIE in {output_file}" %>% glue)
-      write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "-999")
+      readr::write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "-999")
     }
   } else {
     adj_pheno_df

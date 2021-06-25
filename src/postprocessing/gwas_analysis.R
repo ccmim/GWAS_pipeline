@@ -6,6 +6,8 @@ suppressPackageStartupMessages({
   library(logging)
 })
 
+#TODO: Split this script into functions and a main function that call the previous.
+
 setwd(system("git rev-parse --show-toplevel", intern = TRUE))
 
 parser <- ArgumentParser()
@@ -63,7 +65,7 @@ gwas_files <- character()
 for (run_id in args$gwas_folder) {
   
   # TOFIX: run_id is not what I want here.
-  logging::loginfo(glue("Processing experiment with ID {run_id}"))
+  logging::loginfo("Processing experiment with ID {run_id}" %>% glue)
   
   dir.create(glue::glue(figs_dir))
   pvals <- vector(length = 0)
@@ -87,12 +89,12 @@ for (run_id in args$gwas_folder) {
     
     if (file.exists(gwas_f_rds) && !args$overwrite_rds) {
         if (rds_log_flag){
-          logging::logwarn(glue("Found a previously cached RDS files (e.g. {gwas_f_rds}). If you want a new file please run this script again with the --overwrite_rds flag"))
+          logging::logwarn("Found a previously cached RDS files (e.g. {gwas_f_rds}). If you want a new file please run this script again with the --overwrite_rds flag" %>% glue)
           rds_log_flag <- FALSE
         }
         gwas_df <- readRDS(gwas_f_rds)
     } else {
-        logging::loginfo(glue("Reading the GWAS file in text format: {gwas_file}.") )
+        logging::loginfo("Reading the GWAS file in text format: {gwas_file}." %>% glue)
         gwas_df <- read_tsv(gwas_f, col_names = TRUE)
         if (args$cache_rds) {
           logging::loginfo(glue("Caching GWAS in RDS format."))
@@ -100,12 +102,12 @@ for (run_id in args$gwas_folder) {
         }
     }
     
-    logging::loginfo(glue("Processing {phenotype}..."))
+    logging::loginfo("Processing {phenotype}..." %>% glue)
     
     gwas_df <- gwas_df %>% filter(!is.na(P) & P != 0)
     pvals <- c(pvals, gwas_df$P)
 
-    plot_title <- ifelse(args$title, yes = glue("{run_id} - {phenotype}"), no = "")
+    plot_title <- ifelse(args$title, yes = "{run_id} - {phenotype}" %>% glue, no = "")
     
     # MANHATTAN PLOT
     png(glue(manhattan_fp), res=100, width = 3000, height = 1000)
@@ -123,9 +125,9 @@ for (run_id in args$gwas_folder) {
     gwas_list <- list()
     
     # Produce region-wise summary (best p-value per region)
-    for(chr_ in 1:22) {
-      reduced_regions <- regions %>% filter(chr==paste0("chr", chr_))
-      reduced_gwas <- gwas_df %>% filter(CHR==chr_)
+    for (chr_number in 1:22) {
+      reduced_regions <- regions %>% filter(chr==paste0("chr", chr_number))
+      reduced_gwas <- gwas_df %>% filter(CHR==chr_number)
       reduced_gwas <- reduced_gwas %>% mutate(region=cut(BP, breaks=reduced_regions$start, labels=head(reduced_regions$id, -1)))
       gwas_list <- c(gwas_list, list(reduced_gwas))
     }
@@ -140,7 +142,7 @@ for (run_id in args$gwas_folder) {
     next
   
   # POOLED PHENOTYPES' Q-Q PLOT
-  logging::loginfo(glue("Gathering all the associations ({length(pvals)}) into a single QQ-plot..."))
+  logging::loginfo("Gathering all the associations ({length(pvals)}) into a single QQ-plot..." %>% glue)
   qqplot_all_f <- glue(qqplot_all_fp)
   png(qqplot_all_f, res=100, width = 800, height = 800)
   pp <- qqman::qq(pvals, main=glue("{run_id}"), col = "blue4")

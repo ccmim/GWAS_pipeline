@@ -114,9 +114,7 @@ def prepare_config(args):
         config["chromosomes"] = args.chromosomes
 
     config["gwas_software"] = args.gwas_software
-
-    if config["gwas_software"] == "bgenie":
-        config["bgen_sample_file"] = args.bgen_sample_file
+    config["bgen_sample_file"] = args.bgen_sample_file
     
     return config
 
@@ -144,10 +142,13 @@ def adjust_for_covariates(config):
 
     command += ["--output_file", config["filenames"]["phenotype_intermediate"]]
     command += ["--gwas_software", config["gwas_software"]]
-    command += ["--bgen_sample_file", config["bgen_sample_file"]]
+    if config["bgen_sample_file"] is not None:
+      command += ["--bgen_sample_file", config["bgen_sample_file"]]
     
     print("\nPreprocessing the phenotype file to perform GWAS on {}.".format(config["gwas_software"]))    
     print(" ".join(command))
+    print("\n")
+    
     call(command)
     print("\n")
 
@@ -193,7 +194,7 @@ if __name__ == "__main__":
     parser.add_argument("--gwas_software", default="plink", help="GWAS tool. Currently only plink and BGENIE are supported")
     parser.add_argument("--sample_white_lists", nargs="+", default=None)
     parser.add_argument("--sample_black_lists", nargs="+", default=None)
-    #TODO: add to the configuration file    
+    #TODO: add bgen_sample_file to the configuration file    
     parser.add_argument("--bgen_sample_file", default=None, help="Only required if --gwas_software option is BGENIE. It's the sample file linked to the BGEN file.")
     parser.add_argument("--coma_experiment", "-e", default=None, help="If the file patterns contain the {experiment} token, this is replaced by this argument. Meant to be used with CoMA experiment, hence its name.")
     parser.add_argument("--quality_control", "-qc", default=None)

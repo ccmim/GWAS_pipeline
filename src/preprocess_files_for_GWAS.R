@@ -13,7 +13,7 @@ get_args <- function() {
   parser <- ArgumentParser()
   
   # Phenotype file
-  parser$add_argument("-p", "--phenotype_file", required=TRUE)
+  parser$add_argument("-p", "--phenotype_file", required=TRUE, help="Path to the (original) phenotype file. This and all paths must be either absolute paths or paths relative to this repo's root directory")
   parser$add_argument("--phenotypes", default=NULL, nargs="+")
   parser$add_argument("--columns_to_exclude", default=NULL, nargs="+")
   
@@ -49,11 +49,10 @@ check_args <- function(args) {
 main <- function(args) {
   generate_adj_pheno(
     args$phenotype_file, args$phenotypes, args$columns_to_exclude,
-    args$samples_to_include, args$samples_to_exclude,
-    args$covariates_config_yaml,
+    args$samples_to_include, args$samples_to_exclude, args$bgen_sample_file,
+    args$covariates_config_yaml, 
     args$gwas_software,
-    args$output_file,
-    args$bgen_sample_file
+    args$output_file
   )
 }
 
