@@ -207,7 +207,16 @@ format_df_for_tool <- function(pheno_df, gwas_software="plink", ukb.sample=NULL)
 generate_adj_pheno <- function(
   pheno_file, pheno_names, exclude_columns, 
   samples_to_include, samples_to_exclude, ukb.sample=NULL,
-  covariates_config, gwas_software, output_file=NULL) {
+  covariates_config, gwas_software, output_file=NULL, overwrite_output_flag=FALSE) {
+  
+  if ( !is.null(output_file) && file.exists(output_file) ) {
+    if (overwrite_output_flag) {
+      logging::logwarn("Intermediate phenotype file, located at:\n\t{output_file}\nalready exists and will be overwritten." %>% glue)
+    } else {
+      logging::logwarn("Intermediate phenotype file, located at:\n\t{output_file}\nalready exists and won't be overwritten. If this isn't what you want, delete the file and run this R script again or pass the --overwrite flag." %>% glue)
+      quit(save = "no", status = 0)
+    }
+  }
   
   logging::loginfo("Loading phenotype file {pheno_file}..." %>% glue)
   raw_pheno_df <- read_raw_pheno(pheno_file, pheno_names, exclude_columns)
@@ -226,20 +235,18 @@ generate_adj_pheno <- function(
   
   # Write output into file
   if (!is.null(output_file)) {
-    if (file.exists(output_file)) {
-      logging::logwarn("Intermediate phenotype file, located at:\n\t{output_file}\nalready exists and won't be overwritten. If this isn't what you want, delete the file and run this R script again." %>% glue)
-      quit(save = "no", status = 0)
-    }
     dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
     if (tolower(gwas_software) == "plink") {
-      logging::loginfo("Creating file of adjusted phenotypes (formatted for Plink in {output_file}" %>% glue)
+      logging::loginfo("Creating file of adjusted phenotypes (formatted for Plink)")
       readr::write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "NA")
     } else if (tolower(gwas_software) == "bgenie") {
       #TODO: support other NA strings
-      logging::loginfo("Creating file of adjusted phenotypes (formatted for BGENIE in {output_file}" %>% glue)
+      logging::loginfo("Creating file of adjusted phenotypes (formatted for BGENIE)")
       readr::write_delim(adj_pheno_df, output_file, col_names = TRUE, delim = "\t", na = "-999")
     }
+    logging::loginfo("File created successfully at:\n\t\t{output_file}" %>% glue)
   } else {
+    # For testing it may be useful to return the dataframe without creating a file
     adj_pheno_df
   }
 }

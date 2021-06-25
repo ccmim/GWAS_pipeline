@@ -30,6 +30,8 @@ get_args <- function() {
   parser$add_argument("-o", "--output_file", required=TRUE)
   parser$add_argument("--gwas_software", default="plink", help="Which software to format the phenotype file for. Currently only Plink and BGENIE are supported.")
  
+  parser$add_argument("--overwrite_output", default=FALSE, action="store_true", help="Flag indicating if this script should be re-run upon finding a previously generated file with the same name as --output_file.")
+  
   args <- parser$parse_args()
   args$gwas_software <- tolower(args$gwas_software)
   
@@ -52,7 +54,8 @@ main <- function(args) {
     args$samples_to_include, args$samples_to_exclude, args$bgen_sample_file,
     args$covariates_config_yaml, 
     args$gwas_software,
-    args$output_file
+    args$output_file,
+    args$overwrite_output
   )
 }
 

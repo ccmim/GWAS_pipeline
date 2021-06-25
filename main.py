@@ -124,32 +124,33 @@ def adjust_for_covariates(config):
     # config = yaml.load(open(os.path.join("config_files/coma", config_file)))
     # experiment = config["filename_patterns"]["gwas"].split("__")[0]
 
-    command  = ["Rscript", "src/preprocess_files_for_GWAS.R"]    
-    command += ["--phenotype_file", config["filenames"]["phenotype"]]    
+    command  = "Rscript src/preprocess_files_for_GWAS.R\n"
+    command += "--phenotype_file {}\n".format(config["filenames"]["phenotype"])
     if config["phenotype_list"] is not None:
-      command += ["--phenotypes"] + config["phenotype_list"]
+      command += "--phenotypes {}\n".format(config["phenotype_list"])
     else:
       pass # default behaviour, i.e. use all phenotypes (all columns except those excluded in the following line)
     
     # TOFIX: this should not be hardcoded! It will limit the applicability to phenotype files with other formats
-    command += ["--columns_to_exclude", "ID", "subset"]    
-    command += ["--covariates_config_yaml"] + [config["covariates_config"]]    
+    command += "--columns_to_exclude ID subset\n"    
+    command += "--covariates_config_yaml {}\n".format(config["covariates_config"])
 
     if config["sample_white_lists"] is not None:
-      command += ["--samples_to_include"] + list(config["sample_white_lists"])
+      command += "--samples_to_include {}\n".format(" ".join(list(config["sample_white_lists"])))
     if config["sample_black_lists"] is not None:
-      command += ["--samples_to_exclude"] + list(config["sample_black_lists"])    
+      command += "--samples_to_exclude {}\n".format(" ".join(list(config["sample_black_lists"])))
 
-    command += ["--output_file", config["filenames"]["phenotype_intermediate"]]
-    command += ["--gwas_software", config["gwas_software"]]
+    command += "--output_file {}\n".format(config["filenames"]["phenotype_intermediate"])
+    command += "--gwas_software {}\n".format(config["gwas_software"])
     if config["bgen_sample_file"] is not None:
-      command += ["--bgen_sample_file", config["bgen_sample_file"]]
+      command += "--bgen_sample_file {}\n".format(config["bgen_sample_file"])
+    command += "--overwrite_output\n"
     
     print("\nPreprocessing the phenotype file to perform GWAS on {}.".format(config["gwas_software"]))    
-    print(" ".join(command))
-    print("\n")
+    print(command)
+    # print("\n")
     
-    call(command)
+    call(shlex.split(command))
     print("\n")
 
 def generate_summary_and_figures(config):
@@ -157,25 +158,27 @@ def generate_summary_and_figures(config):
     ### TODO: Use a configuration file for the file name patterns
 
     gwas_folder = os.path.dirname(config["filename_patterns"]["gwas"])
-    command  = ["Rscript", "src/postprocessing/gwas_analysis.R"]
-    command += ["--output_folder", "."]
-    command += ["--gwas_folder", gwas_folder] # "output/traditional_indices" + "/" + config["suffix"],        
-    command += ["--gwas_pattern", "GWAS__{phenotype}__" + config["suffix"]]
+
+    command  = "Rscript src/postprocessing/gwas_analysis.R\n"
+    command += "--output_folder .\n"
+    command += "--gwas_folder {}\n".format(gwas_folder) # "output/traditional_indices" + "/" + config["suffix"],        
+    command += "--gwas_pattern GWAS__{{phenotype}}__{}\n".format(config["suffix"])
     if config["phenotype_list"] is not None:
-      command += ["--phenotypes"] + config["phenotype_list"]
-    command += ["--qqplot_pooled", "--cache_rds"]
+      command += "--phenotypes {}\n".format(" ".join(config["phenotype_list"])) 
+    command += "--qqplot_pooled\n"
+    command += "--cache_rds\n"
 
     print("\nCreating Manhattan plots, Q-Q plots and region-wise summaries.")    
-    print(" ".join(command))
+    print(command)
     print("\n")
     
-    call(command)
+    call(shlex.split(command))
 
 
 def main(config):
         
     adjust_for_covariates(config)
-    # GWAS_Run(config).run()
+    GWAS_Run(config).run()
     yaml.dump(config, open(os.path.join(os.path.dirname(config["filename_patterns"]["gwas"]), "config.yaml"), "w"))
     generate_summary_and_figures(config)
 
