@@ -1,53 +1,24 @@
-import os, shlex
+import os, sys, shlex
 from subprocess import call, check_output
 repo_rootdir = check_output(shlex.split("git rev-parse --show-toplevel")).strip().decode('ascii')
 os.chdir(repo_rootdir)
-
-import sys
 sys.path.append(os.getcwd())
-
-import src
-from src.auxiliary import unfold_config
-from src.run_gwas import GWAS_Run
 
 # Import modules
 import pandas as pd
 import yaml
-from copy import deepcopy
 import re
-
 from pprint import pprint
-
 from string import Formatter
+from copy import deepcopy
 
-def adjust_for_covariates(config):
-    
-    # config = yaml.load(open(os.path.join("config_files/coma", config_file)))
-    # experiment = config["filename_patterns"]["gwas"].split("__")[0]
+import src
+from src.auxiliary import unfold_config
+from src.run_gwas import GWAS_Run
+import warnings
 
-    command  = ["Rscript", "src/adjust_for_covariates.R"]
-    command += ["-i", config["filenames"]["phenotype"]]
-    command += ["-o", config["filenames"]["phenotype_intermediate"]]
-    command += ["--samples_white_list"] + list(config["sample_white_lists"])
-    command += ["--covariates_file"] + [config["covariates"]]
-    # command += ["--phenotypes"] + [x.split("_adj")[0] for x in config["phenotype_list"]]
-    command += ["--phenotypes_black_list", "ID", "subset"]
-
-    print(" ".join(command))
-    call(command)
-
-
-def generate_summary_and_figures(config):
-    
-    command  = ["Rscript", "analysis/gwas_analysis.R"]
-    command += ["--output_folder", "."]
-    command += ["--gwas_folder", os.path.dirname(config["filename_patterns"]["gwas"])] # "output/traditional_indices" + "/" + config["suffix"],        
-    command += ["--gwas_pattern", "GWAS__{phenotype}__" + config["suffix"]]
-    # command += ["--phenotypes"] + config["phenotype_list"]
-    command += ["--qqplot_pooled", "--cache_rds"]
-
-    print(" ".join(command))
-    call(command)
+############################################################################################################
+############################################################################################################
 
 
 def extract_formatter_tokens(pattern):
@@ -63,41 +34,42 @@ def extract_formatter_tokens(pattern):
 
 
 def prepare_config(args):
-    
-    config = yaml.load(open(args.yaml_config_file))
-    
-    ### Generate suffix
-    name_rules = yaml.load(open(args.name_rules))
+
+    # TODO: solve this warning. 
+    # This is just a workaround to prevent too many warning messages to show up.
+    # Warning message is: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")    
+      config = yaml.load(open(args.yaml_config_file))
+      ### Generate suffix
+      name_rules = yaml.load(open(args.name_rules))
 
     if args.covariates is not None:
-        config["covariates"] = args.covariates
+        config["covariates_config"] = args.covariates
 
     if args.sample_white_lists is not None:
         config["sample_white_lists"] = args.sample_white_lists
 
     if args.sample_black_lists is not None:
-        config["sample_black_lists"] = args.sample_black_lists
+        config["sample_black_lists"] = args.sample_black_lists    
     
     if args.quality_control is not None:
         config["quality_control"] = args.quality_control
 
-    # produce suffix (config["suffix"]) from suffix template (args.suffix)
+    # produce the actual suffix (config["suffix"]) from suffix template (args.suffix)
     tokens = extract_formatter_tokens(args.suffix)
 
     for token in tokens:
-        print(token)
         if token in config.keys():
             if isinstance(config[token], list):
             # need to cast to tuple because lists cannot be dict keys
                 option_value = tuple(config[token])
             else:
-                option_value = config[token]
+                option_value = config[token]            
             tokens[token] = name_rules[token][option_value]
 
     suffix = args.suffix.format(**tokens)    
     
-    # print(suffix)
-
     ###############
 
     # def overwrite_config_items(config, args):
@@ -105,7 +77,7 @@ def prepare_config(args):
     #         if attr in config.keys() and value is not None:
     #             config[attr] = value
 
-    config = unfold_config(args.yaml_config_file)
+    config = unfold_config(args.yaml_config_file, no_unfolding_for=["covariates_config"])
     
     config["suffix"] = suffix
 
@@ -116,7 +88,6 @@ def prepare_config(args):
 
     if args.gwas_file is not None:
         config["filename_patterns"]["gwas"] = args.gwas_file
-
 
     if args.coma_experiment is not None:
         config["experiment"] = args.coma_experiment
@@ -133,22 +104,75 @@ def prepare_config(args):
             config["filename_patterns"][_fp] = filename
 
     if args.covariates is not None:
-        config["covariates"] = args.covariates
-
-    if args.sample_white_lists is not None:
-        config["sample_white_lists"] = args.sample_white_lists
-
-    if args.sample_black_lists is not None:
-        config["sample_black_lists"] = args.sample_black_lists
-
-    if args.phenotypes is not None:
-        config["phenotype_list"] = args.phenotypes
+        config["covariates_config"] = args.covariates
+    
+    config["sample_white_lists"] = args.sample_white_lists
+    config["sample_black_lists"] = args.sample_black_lists
+    config["phenotype_list"] = args.phenotypes
 
     if args.chromosomes is not None:
         config["chromosomes"] = args.chromosomes
 
-    # pprint(config)
+    config["gwas_software"] = args.gwas_software
+    config["bgen_sample_file"] = args.bgen_sample_file
+    
     return config
+
+
+def adjust_for_covariates(config):
+    
+    # config = yaml.load(open(os.path.join("config_files/coma", config_file)))
+    # experiment = config["filename_patterns"]["gwas"].split("__")[0]
+
+    command  = "Rscript src/preprocess_files_for_GWAS.R\n"
+    command += "--phenotype_file {}\n".format(config["filenames"]["phenotype"])
+    if config["phenotype_list"] is not None:
+      command += "--phenotypes {}\n".format(config["phenotype_list"])
+    else:
+      pass # default behaviour, i.e. use all phenotypes (all columns except those excluded in the following line)
+    
+    # TOFIX: this should not be hardcoded! It will limit the applicability to phenotype files with other formats
+    command += "--columns_to_exclude ID subset\n"    
+    command += "--covariates_config_yaml {}\n".format(config["covariates_config"])
+
+    if config["sample_white_lists"] is not None:
+      command += "--samples_to_include {}\n".format(" ".join(list(config["sample_white_lists"])))
+    if config["sample_black_lists"] is not None:
+      command += "--samples_to_exclude {}\n".format(" ".join(list(config["sample_black_lists"])))
+
+    command += "--output_file {}\n".format(config["filenames"]["phenotype_intermediate"])
+    command += "--gwas_software {}\n".format(config["gwas_software"])
+    if config["bgen_sample_file"] is not None:
+      command += "--bgen_sample_file {}\n".format(config["bgen_sample_file"])
+    command += "--overwrite_output\n"
+    
+    print("\nPreprocessing the phenotype file to perform GWAS on {}.".format(config["gwas_software"]))    
+    print(command)
+    # print("\n")
+    
+    call(shlex.split(command))
+    print("\n")
+
+def generate_summary_and_figures(config):
+    
+    ### TODO: Use a configuration file for the file name patterns
+
+    gwas_folder = os.path.dirname(config["filename_patterns"]["gwas"])
+
+    command  = "Rscript src/postprocessing/gwas_analysis.R\n"
+    command += "--output_folder .\n"
+    command += "--gwas_folder {}\n".format(gwas_folder) # "output/traditional_indices" + "/" + config["suffix"],        
+    command += "--gwas_pattern GWAS__{{phenotype}}__{}\n".format(config["suffix"])
+    if config["phenotype_list"] is not None:
+      command += "--phenotypes {}\n".format(" ".join(config["phenotype_list"])) 
+    command += "--qqplot_pooled\n"
+    command += "--cache_rds\n"
+
+    print("\nCreating Manhattan plots, Q-Q plots and region-wise summaries.")    
+    print(command)
+    print("\n")
+    
+    call(shlex.split(command))
 
 
 def main(config):
@@ -166,22 +190,23 @@ if __name__ == "__main__":
 
     parser.add_argument("--yaml_config_file", "-c", default="config_files/ref_config.yaml", help="Reference configuration file. The rest of the command line arguments overwrite the configuration items.")
     parser.add_argument("--phenotype_file", default=None)
-    parser.add_argument("--covariates", default=None)
-    parser.add_argument("--intermediate_phenotype_file", default=None)
-    parser.add_argument("--gwas_file", default=None)
+    parser.add_argument("--phenotypes", "-ph", nargs="+", default=None, help="List of phenotypes to perform GWAS on.")
+    parser.add_argument("--covariates", default=None, help="YAML file with the configuration specifying the covariates to adjust for.")
+    parser.add_argument("--phenotype_intermediate", default=None, help="File pattern for the intermediate phenotype file, with covariate-adjusted scores formatted according to the GWAS tool to be used.")
+    parser.add_argument("--gwas_file", default=None, help="File pattern for the output GWAS file")
+    parser.add_argument("--gwas_software", default="plink", help="GWAS tool. Currently only plink and BGENIE are supported")
     parser.add_argument("--sample_white_lists", nargs="+", default=None)
     parser.add_argument("--sample_black_lists", nargs="+", default=None)
-    parser.add_argument("--coma_experiment", default=None)
+    #TODO: add bgen_sample_file to the configuration file    
+    parser.add_argument("--bgen_sample_file", default=None, help="Only required if --gwas_software option is BGENIE. It's the sample file linked to the BGEN file.")
+    parser.add_argument("--coma_experiment", "-e", default=None, help="If the file patterns contain the {experiment} token, this is replaced by this argument. Meant to be used with CoMA experiment, hence its name.")
     parser.add_argument("--quality_control", "-qc", default=None)
-    parser.add_argument("--chromosomes", "-chr", default=None, help="Chromosomes as a list of comma-separated ranges, e.g. \"1-4,6,10-15\"")
-    parser.add_argument("--phenotypes", "-ph", nargs="+", default=None, help="List of phenotypes to perform GWAS on.")
+    parser.add_argument("--chromosomes", "-chr", default=None, help="Chromosomes as a list of comma-separated ranges, e.g. \"1-4,6,10-15\"")    
     parser.add_argument("--name_rules", default="config_files/filename_rules/filename_rules.yaml")
-    parser.add_argument("--suffix", default="{covariates}__{sample_white_lists}__{quality_control}", help="Subfolder ")
+    parser.add_argument("--suffix", default="{covariates}__{sample_white_lists}__{sample_black_lists}__{quality_control}", help="Subfolder ")
     
-    # args = parser.parse_known_args()
     args = parser.parse_args()
 
     config = prepare_config(args)
 
-    # pprint(config)
     main(config)

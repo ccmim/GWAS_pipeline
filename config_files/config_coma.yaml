@@ -1,12 +1,11 @@
 chromosomes: 1-22
 
 sample_white_lists:
-  - "data/ids_list/cmr_british_ids.txt"
-  - "data/ids_list/women.txt"
+  - "data/ids_list/cmr_british_unrelated.txt"
 
 sample_black_lists: null
 
-covariates: "config_files/covariates/std_covariates.yaml"
+covariates_config: "config_files/covariates/std_covariates_PC.yaml"
 
 quality_control: "config_files/quality_control/quality_control.yaml"
 
@@ -14,6 +13,7 @@ filename_patterns: {
   # input
   genotype: "config_files/genotype_patterns/genotype_patterns.yaml",
   phenotype: "data/coma_output/{experiment}/latent_space.csv",
+  # intermediate files
   phenotype_intermediate: "data/coma_output/{experiment}/{suffix}/latent_space.csv",
   tmpdir: "data/tmp/coma/{experiment}/{suffix}",
   # output
@@ -22,9 +22,5 @@ filename_patterns: {
 
 exec:
   plink: "plink"
-
-# data_dir: "data"
-# output_dir: "output/coma"
-# experiment: "2020-09-11_02-13-41"
 
 # suffix: "{covariates}__{sample_white_lists}__{quality_control}"

@@ -1,0 +1,302 @@
+---
+title: "GWAS report"
+author: "Rodrigo Bonazzola"
+output:
+  html_document:
+    theme: flatly
+    code_folding: hide
+---
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(glue)
+```
+
+## Genetic principal components
+To compute the PCA loadings, a similar approach as detailed in the UKBB genotyping QC report guide was used.
+It's reproduced here for convenience:
+
+- Minor allele frequency ≥ 2.5% and missingness ≤ 1.5%. (Checking that HWE holds in
+a subset of samples with European descent was part of the SNP QC procedures.)
+- Pairwise $r^2\leq 0.1$ , to exclude SNPs in high LD. (The $r^2$ coefficient was computed using
+`plink` and its `indep-pairwise` function with a moving window of size 1000 bp).
+- Removed `C/G` and `A/T` SNPs to avoid unresolvable strand mismatches.
+- Excluded SNPs in several regions with long-range LD [(1)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2443852/). (The list includes the MHC
+and 22 other regions.)
+
+`[1] A.L. Price et al. Long-range LD can confound genome scans in admixed populations. The
+American Journal of Human Genetics, 83(1):132-135, 2008.`
+
+We also computed the PCA loadings specifically on the individuals self-reported as British, to capture population structure only on this subset.
+
+### Paths
+```{r}
+data_dir <- "~/data/PhD/UKBB/"
+GWAS_DIR <- "/home/rodrigo/GWAS/output/coma"
+
+gwas_paths <- list(
+  "qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__{as.character(input$z)}__{input$suffix}__QQ-plot.png"),
+  "manhattan" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__{as.character(input$z)}__{input$suffix}__manhattan.png"),
+  "pooled_qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__all__QQ-plot.png")
+)
+
+```
+
+### British individuals
+Only British individuals were kept, based on self-reported ethnicity (data field `21000`, value `1001`).
+```{r}
+gbr_ids_file <- glue("{data_dir}/subject_ids/british_ids.txt")
+cmr_gbr_ids_file <- glue("{data_dir}/subject_ids/cmr_british_ids.txt")
+
+```
+
+
+```{r}
+bfile_pattern <- "~/GWAS/data/genotypes/calls/ukb_cal_chr{chromosome}_v2_31803_indiv"
+bim_file_pattern <- paste0(bfile_pattern, ".bim")
+
+extract_variants_in_range <- function(chromosome, start, end) {
+  bim_file <- glue(bim_file_pattern)
+  snp_df <- read.table(bim_file, header=FALSE)
+  colnames(snp_df) <- c("chromosome", "rsid", "pos_cm", "position", "allele_1", "allele_2")
+  snp_df <- snp_df %>% filter(position > start & position < end)
+  snp_df$rsid
+}
+
+extract_variants_ambiguous_strand <- function(chromosome) {
+  bim_file <- glue(bim_file_pattern)
+  snp_df <- read.table(bim_file, header=FALSE)
+  colnames(snp_df) <- c("chromosome", "rsid", "pos_cm", "position", "allele_1", "allele_2")
+  snp_df <- snp_df %>% filter(allele_1 == "C" & allele_2 == "G" | allele_1 == "G" & allele_2 == "C" | allele_1 == "A" & allele_2 == "T" | allele_1 == "T" & allele_2 == "A")
+  as.character(snp_df$rsid)
+}
+
+```
+
+#### SNPs in regions with long-range LD
+```{r, cache=TRUE}
+long_range_ld_df <- read.table("~/GWAS/data/long_range_LD_regions.bed", sep = "\t", header=TRUE)
+long_range_ld.lst <- long_range_ld_df %>% select(1:3) %>% split(., seq(nrow(.))) # dataframe to list by rows
+snps_in_ld <- lapply(long_range_ld.lst, function(x) {x <- as.integer(x); extract_variants_in_range(x[1], x[2], x[3])})
+snps_in_ld <- unlist(snps_in_ld)
+```
+
+#### SNPs with A/T and C/G alleles
+```{r, cache=TRUE}
+ambiguous_strand_snps <- lapply(1:22, extract_variants_ambiguous_strand)
+ambiguous_strand_snps <- unlist(ambiguous_strand_snps)
+```
+
+#### MAF ≥ 2.5% and missingness ≤ 1.5%
+```{r, cache=TRUE, }
+out_bfile_pattern <- "~/GWAS/data/genotypes/calls/ukb_cal_chr{chromosome}_v2_GBR_indiv"
+
+for(chromosome in 1:22) {
+  bfile <- glue(bfile_pattern)
+  out_bfile <- glue(out_bfile_pattern)
+  plink_command_maf <- glue("plink --keep {cmr_gbr_ids_file} --freq --bfile {bfile} --out {out_bfile}")
+  system(plink_command_maf)
+  plink_command_missing <- glue("plink --keep {cmr_gbr_ids_file} --missing --bfile {bfile} --out {out_bfile}")
+  system(plink_command_missing)
+  plink_command_hwe <- glue("plink --keep {cmr_gbr_ids_file} --hardy --bfile {bfile} --out {out_bfile}")
+  system(plink_command_hwe)
+}
+
+get_snps_below_maf_thr <- function(chromosome, maf_threshold=0.025) {
+  maf_file_pattern <- paste0(out_bfile_pattern, ".frq")
+  maf_file <- glue(maf_file_pattern)
+  maf_df <- read.table(maf_file, header=TRUE)
+  maf_df <- maf_df %>% filter(MAF < maf_threshold)
+  as.character(maf_df$SNP)
+}
+
+get_snps_above_miss_thr <- function(chromosome, missingness_threshold=0.015) {
+  missingness_file_pattern <- paste0(out_bfile_pattern, ".lmiss")
+  missingness_file <- glue(missingness_file_pattern)
+  missingness_df <- read.table(missingness_file, header=TRUE)
+  missingness_df <- missingness_df %>% filter(F_MISS > missingness_threshold)
+  as.character(missingness_df$SNP)
+}
+
+get_snps_below_hwe_p_thr <- function(chromosome, hwe_p_threshold=1e-5) {
+  hwe_file_pattern <- paste0(out_bfile_pattern, ".hwe")
+  hwe_file <- glue(hwe_file_pattern)
+  hwe_df <- read.table(hwe_file, header=TRUE)
+  hwe_df <- hwe_df %>% filter(P < hwe_p_threshold)
+  as.character(hwe_df$SNP)
+}
+  
+snps_below_maf_thr <- unlist(lapply(1:22, get_snps_below_maf_thr))
+snps_above_miss_thr <- unlist(lapply(1:22, get_snps_above_miss_thr))
+snps_below_hwe_p_thr <- unlist(lapply(1:22, get_snps_below_hwe_p_thr))
+
+```
+
+```{r}
+snps_to_exclude <- unique(
+  c(ambiguous_strand_snps, 
+  snps_below_maf_thr, 
+  snps_above_miss_thr, 
+  snps_below_hwe_p_thr)
+)
+```
+
+`r length(snps_to_exclude)` SNPs to exclude given the above criterion.
+
+```{r}
+snps_exclude_df <- as.data.frame(snps_to_exclude)
+snps_to_exclude_file <- "~/GWAS/data/genotypes/calls/exclude_snps_for_pca.txt"
+write.csv(snps_exclude_df, snps_to_exclude_file, quote = FALSE, row.names = FALSE)
+```
+
+### LD pruning with PLINK
+```{r, cache=TRUE}
+for(chromosome in 1:22) {
+  bfile <- glue(bfile_pattern)
+  plink_ld_prune_command <- "plink --exclude {snps_to_exclude_file} --indep-pairwise 100 10 0.1 -bfile {bfile} --out {bfile}"
+  plink_ld_prune_command <- glue(plink_ld_prune_command)
+  system(plink_ld_prune_command)
+}
+
+prunein_file_pattern <- paste0(bfile_pattern, ".prune.in")
+prunein_snps <- unlist(lapply(1:22, function(chromosome) read.table(glue(prunein_file_pattern))[,1]))
+prunein_snps_df <- as.data.frame(prunein_snps)
+prunein_snps_file <- "~/GWAS/data/genotypes/calls/snps_for_pca_prune.in"
+write.csv(prunein_snps_df, prunein_snps_file, quote = FALSE, row.names = FALSE)
+```
+
+#### Counts
+
+`r length(ambiguous_strand_snps)` with C/G or A/T allele pairs.
+
+`r length(snps_below_maf_thr)` with MAF < 0.025
+
+`r length(snps_above_miss_thr)` with missingness > 0.015
+
+`r length(snps_below_hwe_p_thr)` with HWE *p*-value < $10^{-5}$.
+
+`r length(prunein_snps)` SNPs after LD pruning.
+
+```{r, cache=TRUE}
+files_to_merge <- "~/GWAS/data/genotypes/calls/PCA_on_GBR/files_to_merge.txt"
+
+if (!file.exists(files_to_merge)) {
+  for(chromosome in 1:22) {
+    system(glue("echo ~/GWAS/data/genotypes/calls/PCA_on_GBR/ukb_cal_chr{chromosome}_v2_29102_GBR_indiv_snps_for_PCA >> {files_to_merge}"))
+  }
+}
+
+geno_file_for_pca_chr1 <- "~/GWAS/data/genotypes/calls/PCA_on_GBR/ukb_cal_chr1_v2_29102_GBR_indiv_snps_for_PCA"
+geno_file_for_pca <- "~/GWAS/data/genotypes/calls/PCA_on_GBR/ukb_cal_all_chrs_v2_29102_GBR_indiv_snps_for_PCA"
+
+if (!file.exists(geno_file_for_pca)) {
+  system(paste("plink", 
+          "--bfile", geno_file_for_pca_chr1, 
+          "--merge-list", files_to_merge, 
+          "--make-bed", "--out", geno_file_for_pca))
+}
+```
+
+### Computing PCA with flashPCA
+```{r, cache=TRUE}
+
+extract_id <- function(x) strsplit(x, ":")[[1]][1]
+
+bfile_filtered <- "/home/rodrigo/GWAS/data/genotypes/calls/PCA_on_GBR/ukb_cal_all_chrs_v2_29102_GBR_indiv_snps_for_PCA"
+genomic_pca_file <- "~/data/PhD/UKBB/genomicPCs_unrelated_GBR.tsv"
+
+if (!file.exists(genomic_pca_file)) {
+  genomic_pca <- flashpcaR::flashpca(bfile_filtered, ndim=10)
+  pca_proj <- genomic_pca$projection
+  pca_proj_df <- as.data.frame(pca_proj)
+  colnames(pca_proj_df) <- paste0("PC", 1:ncol(pca_proj_df))
+  pca_proj_df$ID <- rownames(pca_proj_df)
+  pca_proj_df <- cbind(pca_proj_df %>% select(ID), pca_proj_df %>% select(-ID)) # reorder columns
+  write.table(pca_proj_df, file=genomic_pca_file , quote=FALSE, row.names=FALSE, sep = "\t")
+} else {
+  pca_proj_df <- read.table(genomic_pca_file, header=TRUE, sep = "\t", stringsAsFactors = FALSE)
+}
+
+pca_proj_df$ID <- unname(sapply(pca_proj_df$ID, extract_id))
+rownames(pca_proj_df) <- pca_proj_df$ID
+```
+
+### Correlations of genomic PCs with latent variables
+```{r, warning=FALSE}
+change_z_sign <- function(z_df, sign) {
+  for (z in names(sign)) {
+    sgn <- sign[[z]]
+    if (sgn == "-")
+      z_df[,z] <- -1 * z_df[,z]
+  }
+  z_df
+}
+
+fetch_latent_repr <- function(run_id, mapping=NULL, sign=NULL) {
+  root_dir <- "/home/rodrigo/pytorch_coma/"
+  z_df <- read.csv(glue::glue(file.path(root_dir, "output/{run_id}/latent_space.csv")))
+  rownames(z_df) <- z_df$ID
+  
+  if(!is.null(mapping)) {
+    z_df <- data.table::setnames(z_df, old=unname(unlist(mapping)), new=names(mapping))
+    z_df <- z_df[,names(mapping)]
+  }
+  
+  if(!is.null(sign))
+    z_df <- change_z_sign(z_df, sign)
+  
+  z_df
+}
+
+run_params <- yaml::read_yaml("/home/rodrigo/pytorch_coma/analysis/paper_z_mapping_parameters.yaml")
+
+experiments <- c(
+  "Scaled meshes"="2020-09-11_02-13-41", 
+  "Unscaled meshes"="2020-09-30_12-36-48"
+)
+
+N_PC <- 10
+```
+
+```{r, cache=TRUE, warning=FALSE, results = "asis"}
+
+for(i in 1:length(experiments)) {
+  
+  run_id <- experiments[i]
+  
+  cat("\n")
+  cat(glue("#### {names(experiments)[i]}"))
+  
+  mapping <- run_params[[run_id]]$mapping
+  sign <- run_params[[run_id]]$sign
+  label <- run_params[[run_id]]$label
+  z_df <- fetch_latent_repr(run_id, mapping, sign)
+  pca_proj_ <- pca_proj_df[intersect(rownames(z_df), rownames(pca_proj_df)),] %>% select(-ID)
+  z_df <- z_df[rownames(pca_proj_),]
+  
+  corr_mat <- pval_mat <- matrix(nrow=N_PC, ncol=8)
+  colnames(corr_mat) <- colnames(pval_mat) <- paste0("z", 1:8)
+  rownames(corr_mat) <- rownames(pval_mat) <- colnames(pca_proj_)[1:N_PC]
+  
+  for (zcol in paste0("z", 1:8)) {
+    for (pc in colnames(pca_proj_)[1:N_PC]) {
+      corr <- cor.test(pca_proj_[,pc], z_df[,zcol], method = "spearman")
+      corr_mat[pc, zcol] <- corr$estimate
+      pval_mat[pc, zcol] <- corr$p.value
+    }
+  }
+  # corrmat <- cor(pca_proj, z_df %>% select(starts_with("z")), method="spearman", use="complete.obs")
+  
+  print(knitr::kable(round(corr_mat, digits = 4)))
+  cat("\n")
+  
+  #print(knitr::kable(pval_mat))
+  # colnames(corr_mat) <- label
+  colnames(pval_mat) <- label
+  # corrplot::corrplot(pval_mat, p.mat = TRUE)
+  corrplot::corrplot(-log10(pval_mat), is.corr = FALSE)
+  cat("\n")
+
+}
+```

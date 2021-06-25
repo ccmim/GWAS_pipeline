@@ -1,0 +1,203 @@
+---
+title: "GWAS report"
+author: "Rodrigo Bonazzola"
+output:
+  html_document:
+    theme: flatly
+    code_folding: hide
+runtime: shiny
+---
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(glue)
+```
+This report aims to summarise the findings after following Bernard's suggestions.
+
+### Paths
+```{r}
+data_dir <- "~/data/PhD/UKBB/"
+GWAS_DIR <- "/home/rodrigo/GWAS/output/coma"
+
+gwas_paths <- list(
+  "qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__{as.character(input$z)}__{input$suffix}__QQ-plot.png"),
+  "manhattan" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__{as.character(input$z)}__{input$suffix}__manhattan.png"),
+  "pooled_qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__all__QQ-plot.png")
+)
+
+```
+
+## Filtering GWAS sample
+### Loading subject IDs
+#### British individuals
+Only British individuals were kept, based on self-reported ethnicity (data field `21000`, value `1001`).
+```{r}
+gbr_ids_file <- glue("{data_dir}/subject_ids/british_ids.txt")
+cmr_gbr_ids_file <- glue("{data_dir}/subject_ids/cmr_british_ids.txt")
+```
+
+```{r}
+gbr_ids <- read.csv(gbr_ids_file, header = FALSE)$ID
+ids <- read.csv(glue("{data_dir}/subject_ids/IDs_32k.csv"), header = FALSE)$V1
+```
+
+```{r}
+cardiac_indices_df <-  read.csv(glue("{data_dir}/cardiac_indices/Cardiac_Function_Indexes_11350.csv"))
+```
+
+#### EF < 50%
+```{r}
+read_icd10_ids <- function(icd10) {
+  read.csv(glue("{data_dir}/subject_ids/icd10/{icd10}.txt"))[,1]
+}
+```
+
+#### Hypertension
+```{r}
+hypertension_ids_all <- read_icd10_ids("I10")
+hypertension_ids_cmr <- intersect(ids, hypertension_ids_all)
+```
+
+#### Acute myorcardial infarction
+```{r}
+icd10_codes_acuteMI <- c(
+  "I210", # 
+  "I211", #
+  "I212", #
+  "I213", #
+  "I214", #
+  "I219"  #
+)
+acuteMI_ids_all <- unlist(sapply(icd10_codes_acuteMI, read_icd10_ids))
+acuteMI_cmr <- intersect(ids, acuteMI_ids_all)
+```
+
+#### Cardiomyopathies
+```{r}
+icd10_codes_CM <- c(
+  "I420", #
+  "I421", #
+  "I422", #
+  "I424", #
+  "I425", #
+  "I426", #
+  "I427", #
+  "I428", #
+  "I429"  #
+)
+
+CM_ids_all <- unlist(sapply(icd10_codes_CM, read_icd10_ids))
+CM_cmr <- intersect(ids, CM_ids_all)
+```
+
+#### Angina Pectoris
+```{r}
+icd10_codes_AP <- c(
+  "I200", #
+  "I201", #
+  "I208", #
+  "I209"  #
+)
+
+AP_ids_all <- unlist(sapply(icd10_codes_AP, read_icd10_ids))
+AP_cmr <- intersect(ids, AP_ids_all)
+```
+
+`r length(hypertension_ids_cmr)` British individuals also with CMR.
+
+`r length(hypertension_ids_all)` individuals with hypertension.
+Among them, `r length(hypertension_ids_cmr)` British individuals also with CMR.
+
+`r length(acuteMI_ids_all)` individuals with acute MI.
+Among them, `r length(acuteMI_cmr)` British individuals also with CMR.
+
+`r length(CM_ids_all)` individuals with cardiomyopathies.
+Among them, `r length(CM_cmr)` British individuals also with CMR.
+
+`r length(AP_ids_all)` individuals with angina pectoris.
+Among them, `r length(AP_cmr)` British individuals also with CMR.
+
+#### Relatedness
+Kinship coefficients were obtained from the UK Biobank, by running the command `ukbgene rel`.
+
+```{r}
+kinship_df <- read.table(glue("{data_dir}/ukb11350_rel_s488226.dat"), header = TRUE)
+kinship_df <- kinship_df %>% filter(ID1 %in% ids & ID2 %in% ids)
+str(kinship_df)
+```
+
+
+### GWAS results
+```{r}
+experiments <- c(
+  "scaled"="2020-09-11_02-13-41",  # scaled meshes
+  "unscaled"="2020-09-30_12-36-48"   # unscaled meshes
+)
+
+run_params <- yaml::read_yaml("/home/rodrigo/pytorch_coma/analysis/paper_z_mapping_parameters.yaml")
+# mapping <- run_params[[run_id]]$mapping
+# sign <- run_params[[run_id]]$sign
+suffixes <- list.files(file.path(GWAS_DIR, experiments["scaled"])) %>% .[grepl("std", .)]
+zs <- paste0("z", 0:7)
+
+filtering <- c(
+  "No filtering"="std_covariates__GBR__qc",
+  "EF < 50%"="std_covariates__GBR__excl_EF_lt_50__qc",
+  "EF < 50% + HT"="std_covariates__GBR__excl_EF_lt_50_and_hypertension__qc",
+  "EF < 50% + HT + CM"="std_covariates__GBR__excl_EF_lt_50_and_hypertension_acuteMI__qc",
+  "EF < 50% + HT + CM + acMI"="std_covariates__GBR__excl_EF_lt_50_and_hypertension_acuteMI_Cardiomyopathies__qc",
+  "EF < 50% + HT + CM + acMI + AP"="std_covariates__GBR__excl_EF_lt_50_and_hypertension_acuteMI_Cardiomyopathies_AnginaPectoris__qc"
+)
+```
+
+```{r, echo=FALSE}
+shinyApp(
+  ui = fluidPage(
+    sidebarLayout(
+      sidebarPanel(
+        selectInput("experiment", "Experiment:", choices = experiments, selected = "2020-09-11_02-13-41"),
+        uiOutput("zSelection"),
+        selectInput("suffix", "Filtering:", choices = filtering),
+        radioButtons("plotType", "Plot:", choices = c("Manhattan"="manhattan", "QQ plot"="qqplot"))
+      ),
+      mainPanel(
+        conditionalPanel("input.plotType == 'manhattan'",
+          imageOutput("manhattan")
+        ),
+        conditionalPanel("input.plotType == 'qqplot'",
+          imageOutput("qqplot")
+        )
+      )
+    )
+  ),
+
+  server = function(input, output) {
+    output$zSelection <- renderUI({
+      run_params <- yaml::read_yaml("/home/rodrigo/pytorch_coma/analysis/paper_z_mapping_parameters.yaml")
+      # mapping <- run_params[[if_else(is.null(input$experiment), "scaled", input$experiment)]]$mapping
+      print(input$experiment)
+      mapping <- run_params[[input$experiment]]$mapping
+      zs_ <- paste0("z", 1:8)
+      names(zs_) <- zs_
+      zs_ <- sapply(zs_ , function(x) mapping[[x]])
+      print(zs_)
+      selectInput("z",  "z:", choices = zs_)
+    })
+    
+    output$manhattan <- renderImage( { 
+      list(
+        src = glue(gwas_paths$manhattan),
+        width = 600, height = 200
+      ) 
+    }, deleteFile=FALSE )
+    
+    output$qqplot <- renderImage( { 
+      list(
+        src = glue(gwas_paths$qqplot),
+        width = 300, height = 300
+      ) 
+    }, deleteFile=FALSE )
+  }
+)
+```

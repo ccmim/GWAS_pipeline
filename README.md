@@ -12,9 +12,11 @@ This section lists the packages needed to run the code in this repository. If us
 This code has been tested on `Python 3.6.3` and `R 3.6`.
 
 For pre-processing data, it requires the `tidyverse` package.
-For performing GWAS, it requires installing the tools `plink 1.9` (for `bed/bim/fam` files) and/or `BGENIE 1.3.1` (for `bgen` files).
+For performing GWAS, it requires installing the tools `plink 1.9` (for `bed/bim/fam` files) and/or `BGENIE 1.4.1` (for `bgen` files).
 For performing downstream analysis, it requires the `qqman` package.
 
+### Conda environment
+TO DO: provide file with the requirements to build the environment.
 
 ## Usage
 The pipeline consists of scripts for:
@@ -23,6 +25,7 @@ The pipeline consists of scripts for:
 3) **Executing GWAS**: self-explanatory. 
 4) **Analyze results**: explore the output of the GWAS by generating Manhattan plots and Q-Q plots. Integrating data from other sources in order to interpret the results.   
 
+Steps 2 to 4 rely on a single `yaml` configuration file.
 
 #### Fetching data
 For this, the `ukbgene` tool must be downloaded first:

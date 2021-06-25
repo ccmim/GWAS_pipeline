@@ -1,3 +1,6 @@
-[submodule "runs/ARC-helpers"]
-	path = runs/ARC-helpers
-	url = git@github.com:rbonazzola/ARC-helpers.git
+[submodule "utils/ARC_helpers"]
+	path = utils/ARC-helpers
+	url = git@github.com:rbonazzola/ARC_helpers.git
+[submodule "utils/summary-gwas-imputation"]
+	path = utils/summary-gwas-imputation
+	url = git@github.com:hakyimlab/summary-gwas-imputation.git

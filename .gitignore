@@ -1,8 +1,13 @@
 output*
 figures*
-deprecated
+.deprecated
 .ipynb_checkpoints
 .idea
 __pycache__
 config_files/coma
 data
+*html
+*pdf
+tests/examples
+analysis/rsconnect
+.project

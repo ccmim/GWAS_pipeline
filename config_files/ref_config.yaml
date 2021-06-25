@@ -1,8 +1,7 @@
 chromosomes: 1-22
 
 sample_white_lists:
-  - "data/ids_list/cmr_british_ids.txt"
-  - "data/ids_list/women.txt"
+  - "data/ids_list/cmr_british_unrelated.txt"
 
 sample_black_lists: null
 

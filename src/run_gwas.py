@@ -2,8 +2,7 @@ import os
 import re
 import pandas as pd
 import yaml
-from subprocess import call
-# from code.auxiliary import *
+import subprocess
 from .auxiliary import *
 import shutil
 import glob
@@ -15,9 +14,6 @@ class GWAS_Run:
     def __init__(self, yaml_config_file):
         self.config = GWASConfig(yaml_config_file)
         # self.filename_rules = config["suffix_tokens"]
-
-        # Generate
-        # self.generate_phenotype_file()
 
     def __str__(self):
         return ("\n".join([
@@ -70,7 +66,8 @@ class GWAS_Run:
         if self.config.qc["maf_thres"] is not None:
             command += ["--maf", str(self.config.qc["maf_thres"])]
 
-        call(command)
+        #TODO: add option to output PLINK messages to the console
+        subprocess.call(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     #####################################################################
 
@@ -160,7 +157,6 @@ class GWASConfig:
             config = yaml.load(open(config))
 
         # TODO: when the dict key is a tuple for which element order is irrelevant, use frozenset instead.            
-
         # self.suffix = config["suffix"].format(**tokens)
         
         # End of actions that need to be performed prior to unnesting the nested yaml files
@@ -172,7 +168,7 @@ class GWASConfig:
         # self.pheno_f_tmp = self.get_pheno_tmp_file(config) # temporal file with phenotype values
 
         self.pheno_f = self.get_pheno_file(config)
-#         self.pheno_f_tmp = os.path.join(self.tmpdir, "phenotypes.tsv") # temporal file with phenotype values
+        # self.pheno_f_tmp = os.path.join(self.tmpdir, "phenotypes.tsv") # temporal file with phenotype values
         self.phenotypes = self.get_phenotypes(config)
         self.tmpdir = config["filenames"]["tmpdir"]
         os.makedirs(self.tmpdir, exist_ok=True)
@@ -215,8 +211,9 @@ class GWASConfig:
         phenotype_list = config.get("phenotype_list", None)
         # if None, use all the phenotypes
         if phenotype_list is None:
+            #TODO: by default, guess the column separator
             phenotypes = open(self.pheno_f).readline().strip().split("\t")
-            #TODO: This column name might vary across datasets!
+            #TODO: This column name might vary across datasets, it's better to provide it as part of the phenotype configuration
             # print(phenotypes)
             phenotypes.remove("IID")
             phenotypes.remove("FID")
