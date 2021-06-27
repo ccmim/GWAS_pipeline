@@ -94,7 +94,7 @@ for (run_id in args$gwas_folder) {
         }
         gwas_df <- readRDS(gwas_f_rds)
     } else {
-        logging::loginfo("Reading the GWAS file in text format: {gwas_file}." %>% glue)
+        logging::loginfo("Reading the GWAS file in text format: {gwas_f}." %>% glue)
         gwas_df <- read_tsv(gwas_f, col_names = TRUE)
         if (args$cache_rds) {
           logging::loginfo(glue("Caching GWAS in RDS format."))
