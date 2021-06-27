@@ -177,9 +177,9 @@ def generate_summary_and_figures(config):
 
 def main(config):
         
-    # adjust_for_covariates(config)
-    # GWAS_Run(config).run()
-    # yaml.dump(config, open(os.path.join(os.path.dirname(config["filename_patterns"]["gwas"]), "config.yaml"), "w"))
+    adjust_for_covariates(config)
+    GWAS_Run(config).run()
+    yaml.dump(config, open(os.path.join(os.path.dirname(config["filename_patterns"]["gwas"]), "config.yaml"), "w"))
     generate_summary_and_figures(config)
 
 
