@@ -3,6 +3,7 @@ covariates_config: {
   "config_files/covariates/std_covariates.yaml": "std_covariates",
   "config_files/covariates/std_covariates_and_z5.yaml": "std_covariates_adj_by_z5",
   "config_files/covariates/std_covariates_PC.yaml": "std_covariates_PC",
+  "config_files/covariates/std_covariates_10PCs_and_LVEDV.yaml": "std_covariates_10PCs_LVEDV",
 }
 sample_white_lists: {
   !!python/tuple ["data/ids_list/cmr_ids.txt"]: "ALL_ETHNICITIES",
