@@ -1,3 +1,14 @@
+import os
+import shlex
+import copy
+from subprocess import call
+# import ARC_helpers as ARC
+# from ARC.SGE_utils import *
+
+# odir = "../hwe_pval_gt_1e-5__maf_gt_1e-2__info_gt_0.3"
+
+# experiment = "2020-09-11_02-13-41"
+
 import os, sys, shlex
 from subprocess import call, check_output
 repo_rootdir = check_output(shlex.split("git rev-parse --show-toplevel")).strip().decode('ascii')
@@ -178,9 +189,61 @@ def generate_summary_and_figures(config):
 def main(config):
         
     adjust_for_covariates(config)
-    GWAS_Run(config).run()
+    BGENIE_Run(config).run()
     yaml.dump(config, open(os.path.join(os.path.dirname(config["filename_patterns"]["gwas"]), "config.yaml"), "w"))
     generate_summary_and_figures(config)
+
+
+class BGENIE_Run(object):
+
+  # samples = "data/genotypes/imputed/hwe_pval_gt_1e-5__maf_gt_1e-2__info_gt_0.3/samples.txt"
+  # covariates = "config_files/covariates/std_covariates.yaml"
+  # pheno_file= "data/tmp/{}/latent_space_adjusted.csv".format(experiment)
+  # adjust_for_covariates()
+  
+  def __init__(self, config):
+
+    experiment = config["experiment"]
+    self.bgen_dir = "data/genotypes/imputed/hwe_pval_gt_1e-5__maf_gt_1e-2__info_gt_0.3"
+    self.odir = os.path.dirname(config["filename_patterns"]["gwas"]) # "output/coma/{}/BGEN".format(experiment)
+    self.pheno_file = config["filenames"]["phenotype_intermediate"]
+    os.makedirs(self.odir, exist_ok=True)
+  
+        
+  def run(self, run_locally=True):
+    
+    commands = []
+    # commands.append("export PATH=/home/home01/scrb/bin:$PATH")
+
+    bgen_files = [ x for x in os.listdir(self.bgen_dir) if x.endswith("bgen") ][0:10]
+
+    for bgen_file in bgen_files:
+        
+      region = bgen_file.split("__")[0].split("imp_")[1]
+      bgen_file = os.path.join(self.bgen_dir, bgen_file)
+      ofile = os.path.join(self.odir, "{}.txt".format(region))
+
+      bgen_command = "bgenie\n"
+      bgen_command += "--bgen {}\n".format(bgen_file)
+      bgen_command += "--pheno {}\n".format(self.pheno_file)
+      bgen_command += "--pvals\n"
+      bgen_command += "--out {}\n".format(ofile)
+      # bgen_command = " ".join(bgen_command)
+
+      commands_ = copy.copy(commands)
+      commands_.append(bgen_command)
+      print(bgen_command)
+
+      if run_locally:
+        os.environ["PATH"]+=":"+os.path.join(os.environ["HOME"],".bin")
+        for command_ in commands_:
+          call(shlex.split(command_))
+      else:
+        jobname = region
+        submit_sge_job(
+          jobname, commands=commands_, folder="runs/jobs", 
+          memory_limit="4G", walltime="00:10:00", dry_run=False
+        )
 
 
 if __name__ == "__main__":
