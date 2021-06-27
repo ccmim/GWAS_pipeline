@@ -1,5 +1,4 @@
 # install.packages("reader") # to use reader::get.delim (to infer table delimiter)
-# install.packages("ukbtools") # to use reader::get.delim (to infer table delimiter)
 suppressPackageStartupMessages({
   library(dplyr)
   library(stringr)
@@ -27,6 +26,12 @@ get_exclude_list <- function(samples_to_exclude=NULL) {
     bl <- Reduce(union, sapply(samples_to_exclude, function(file) read.delim(file, sep = reader::get.delim(file))[,1]))
   }
   bl
+}
+
+# Copied from ukbtools
+ukb_gen_read_sample <- function (file, col.names = c("id_1", "id_2", "missing"), row.skip = 2) {
+  sample <- readr::read_table(file, skip = row.skip, col_names = col.names)
+  as.data.frame(sample)
 }
 
 get_sample_list <- function(samples_to_include=NULL, samples_to_exclude=NULL) {
@@ -117,6 +122,7 @@ read_raw_pheno <- function(pheno_file, pheno_names=NULL, exclude_columns=NULL) {
   
   if (!file.exists(pheno_file)) {
     #TODO: add logging
+      logging::logerror("File {pheno_file} was not found." %>% glue)
     quit(status = 1)
   } 
   
@@ -193,12 +199,12 @@ format_df_for_tool <- function(pheno_df, gwas_software="plink", ukb.sample=NULL)
       stop(2)
     }
     suppressMessages({
-      sample_df <- ukbtools::ukb_gen_read_sample(file=ukb.sample)
+      sample_df <- ukb_gen_read_sample(file=ukb.sample)
     })
     names(sample_df)[1] <- "ID"
     sample_df <- mutate(sample_df, ID=as.character(ID))
     pheno_df <- sample_df %>% left_join(pheno_df, by = "ID") %>% select("ID", all_of(pheno_names)) # select(.dots = pheno_names)
-    # pheno_df <- ukbtools::ukb_gen_write_bgenie(pheno_df, sample_df, ukb.id="ID", ukb.variables=pheno_names)
+    # pheno_df <- ukbtools::n_write_bgenie(pheno_df, sample_df, ukb.id="ID", ukb.variables=pheno_names)
   }
   pheno_df
 }
