@@ -12,7 +12,8 @@ args = parser.parse_args()
 for experiment in args.experiments:
   for z in args.z:  
     
-    path_extension = "PATH=/home/home01/scrb/bin:$PATH"
+    path_extension = "PATH=${HOME}/.bin:${PATH}"
+
     conda_env = "module load anaconda; source activate gwas"
     
     concat_command = [

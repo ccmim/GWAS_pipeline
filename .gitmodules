@@ -1,4 +1,4 @@
-[submodule "utils/ARC_helpers"]
+[submodule "utils/ARC-helpers"]
 	path = utils/ARC-helpers
 	url = git@github.com:rbonazzola/ARC_helpers.git
 [submodule "utils/summary-gwas-imputation"]

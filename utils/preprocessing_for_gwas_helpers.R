@@ -134,17 +134,27 @@ read_raw_pheno <- function(pheno_file, pheno_names=NULL, exclude_columns=NULL) {
     if (!is.null(exclude_columns)) {
       pheno_names <- pheno_names[!pheno_names %in% exclude_columns]
     }
+  } 
+  if (length(pheno_names) == 1) {
+    # Bad behaviour when pheno_names == 1 require ad-hoc treatment
+    pheno_df_ <- data.frame(pheno_df[,pheno_names])
+    colnames(pheno_df_) <- pheno_names
+    rownames(pheno_df_) <- rownames(pheno_df)
+    pheno_df_
+  } else {
+    pheno_df[,pheno_names]  
   }
-  pheno_df[,pheno_names]
+  
 }
 
 
 exclude_samples <-  function(pheno_df, samples_to_include, samples_to_exclude, remove_rows=FALSE) {
    samples <- get_sample_list(samples_to_include, samples_to_exclude)
+   samples <- as.character(samples)
    if (remove_rows) {
-     pheno_df <- pheno_df[samples,]  
+     pheno_df <- pheno_df[samples,]
    } else {
-     pheno_df[samples,] <- NA
+     pheno_df[!rownames(pheno_df) %in% samples,] <- NA
    }
    pheno_df %>% tibble::rownames_to_column("ID")
 }
@@ -170,6 +180,8 @@ create_adj_pheno_df <- function(raw_pheno_df, covariates_df) {
   pheno_names <- colnames(raw_pheno_df %>% select(-ID))
   covariate_names <- colnames(covariates_df %>% select(-ID))
 
+  print(head(raw_pheno_df))
+  print(head(covariates_df))
   adj_pheno_df <- raw_pheno_df
   pheno_and_covar_df <- left_join(raw_pheno_df, covariates_df, by="ID")
 

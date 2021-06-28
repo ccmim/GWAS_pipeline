@@ -2,8 +2,6 @@ import os
 import shlex
 import copy
 from subprocess import call
-# import ARC_helpers as ARC
-# from ARC.SGE_utils import *
 
 # odir = "../hwe_pval_gt_1e-5__maf_gt_1e-2__info_gt_0.3"
 
@@ -14,6 +12,9 @@ from subprocess import call, check_output
 repo_rootdir = check_output(shlex.split("git rev-parse --show-toplevel")).strip().decode('ascii')
 os.chdir(repo_rootdir)
 sys.path.append(os.getcwd())
+
+sys.path.append("utils/ARC-helpers")
+from SGE_utils import *
 
 # Import modules
 import pandas as pd
@@ -138,7 +139,7 @@ def adjust_for_covariates(config):
     command  = "Rscript src/preprocess_files_for_GWAS.R\n"
     command += "--phenotype_file {}\n".format(config["filenames"]["phenotype"])
     if config["phenotype_list"] is not None:
-      command += "--phenotypes {}\n".format(config["phenotype_list"])
+      command += "--phenotypes {}\n".format(" ".join(config["phenotype_list"]))
     else:
       pass # default behaviour, i.e. use all phenotypes (all columns except those excluded in the following line)
     
@@ -155,7 +156,7 @@ def adjust_for_covariates(config):
     command += "--gwas_software {}\n".format(config["gwas_software"])
     if config["bgen_sample_file"] is not None:
       command += "--bgen_sample_file {}\n".format(config["bgen_sample_file"])
-    command += "--overwrite_output\n"
+    # command += "--overwrite_output\n"
     
     print("\nPreprocessing the phenotype file to perform GWAS on {}.".format(config["gwas_software"]))    
     print(command)
@@ -185,22 +186,51 @@ def generate_summary_and_figures(config):
     
     call(shlex.split(command))
 
+def concatenate_gwas(config, submit_to_hpc_queue=False):
+    
+    ### TODO: Use a configuration file for the file name patterns
+
+    gwas_folder = os.path.dirname(config["filename_patterns"]["gwas"])
+    output_fp = "GWAS__{{z}}__{suffix}".format(suffix=config["suffix"])
+
+    concat_command  = "Rscript src/postprocessing/concatenate_gwas.R\n"
+    concat_command += "--experiment {}\n".format(config["experiment"])
+    concat_command += "--z {z}\n"
+    concat_command += "--input_results_dir {}\n".format(gwas_folder) # "output/traditional_indices" + "/" + config["suffix"],        
+    concat_command += "--output_filename_pattern {}".format(output_fp)
+    
+    path_extension = "PATH=${HOME}/.bin:${PATH}"
+    conda_env = "module load anaconda; source activate gwas"
+
+    print("\nConcatenate region-wise GWAS summary statistics\n")
+                
+    #TOFIX: replace this, please
+    for z in ["z"+str(i) for i in range(8)]:
+      if submit_to_hpc_queue:
+        concat_command_ = concat_command.replace("\n", " \\\n").format(z=z)
+        jobname = "concat__{experiment}__{z}".format(experiment=config["experiment"], z=z)
+        submit_sge_job(jobname, 
+          commands=[path_extension, conda_env, concat_command_], 
+          memory_limit="16G", walltime="01:00:00", dry_run=False
+        )
+      else:
+        concat_command_ = concat_command.format(z=z)
+        print(concat_command_)
+        call(shlex.split(concat_command_))
+        print("\n")
+
 
 def main(config):
         
     adjust_for_covariates(config)
     BGENIE_Run(config).run()
     yaml.dump(config, open(os.path.join(os.path.dirname(config["filename_patterns"]["gwas"]), "config.yaml"), "w"))
+    concatenate_gwas(config, submit_to_hpc_queue=True)
     generate_summary_and_figures(config)
 
 
 class BGENIE_Run(object):
-
-  # samples = "data/genotypes/imputed/hwe_pval_gt_1e-5__maf_gt_1e-2__info_gt_0.3/samples.txt"
-  # covariates = "config_files/covariates/std_covariates.yaml"
-  # pheno_file= "data/tmp/{}/latent_space_adjusted.csv".format(experiment)
-  # adjust_for_covariates()
-  
+    
   def __init__(self, config):
 
     experiment = config["experiment"]
@@ -210,12 +240,12 @@ class BGENIE_Run(object):
     os.makedirs(self.odir, exist_ok=True)
   
         
-  def run(self, run_locally=True):
+  def run(self, run_locally=False):
     
     commands = []
-    # commands.append("export PATH=/home/home01/scrb/bin:$PATH")
+    commands.append("export PATH=/home/home01/scrb/.bin:$PATH")
 
-    bgen_files = [ x for x in os.listdir(self.bgen_dir) if x.endswith("bgen") ][0:10]
+    bgen_files = [ x for x in os.listdir(self.bgen_dir) if x.endswith("bgen") ]
 
     for bgen_file in bgen_files:
         
@@ -230,9 +260,6 @@ class BGENIE_Run(object):
       bgen_command += "--out {}\n".format(ofile)
       # bgen_command = " ".join(bgen_command)
 
-      commands_ = copy.copy(commands)
-      commands_.append(bgen_command)
-      print(bgen_command)
 
       if run_locally:
         os.environ["PATH"] += ":"+os.path.join(os.environ["HOME"],".bin")
@@ -240,9 +267,12 @@ class BGENIE_Run(object):
           call(shlex.split(command_))
       else:
         jobname = region
+        commands_ = copy.copy(commands)
+        bgen_command = bgen_command.replace("\n", " \\\n")
+        commands_.append(bgen_command)
         submit_sge_job(
           jobname, commands=commands_, folder="runs/jobs", 
-          memory_limit="4G", walltime="00:10:00", dry_run=False
+          memory_limit="4G", walltime="00:05:00", dry_run=False
         )
 
 

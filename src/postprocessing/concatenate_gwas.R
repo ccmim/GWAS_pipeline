@@ -1,6 +1,10 @@
-library(tidyverse)
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(glue)
+  library(argparse)
+})
 
-concatenate_gwas <- function(experiment, z, results_dir, file_fp) {
+concatenate_gwas <- function(experiment, z, results_dir, output_file) {
   
   setwd(system("git rev-parse --show-toplevel", intern = TRUE))
   
@@ -32,27 +36,26 @@ concatenate_gwas <- function(experiment, z, results_dir, file_fp) {
   }
   
   df <- bind_rows(df_lst)
-  write_tsv(df, file.path(results_dir, paste0(glue::glue(file_fp), ".tsv")))
-  write_rds(df, file.path(results_dir, paste0(glue::glue(file_fp), ".rds")))
+  write_tsv(df, file.path(results_dir, paste0(output_file, ".tsv")))
+  write_rds(df, file.path(results_dir, paste0(output_file, ".rds")))
 }
 
-library(argparse)
 
 parser <- argparse::ArgumentParser()
 parser$add_argument("--experiments", nargs="+")
 parser$add_argument("--z", nargs="+")
-parser$add_argument("--results_dir", default="output/coma/{experiment}/BGEN/")
-parser$add_argument("--filename_pattern", default="GWAS__{z}__std_covariates__GBR__BGEN__qc")
+parser$add_argument("--input_results_dir")
+parser$add_argument("--output_filename_pattern")
 args <- parser$parse_args()
 
 for (experiment in args$experiments) {
   for (z in args$z) {
-    print(glue::glue("Processing {experiment}/{z}..."))
+    logging::loginfo(glue("Processing {experiment}/{z}..."))
     concatenate_gwas(
       experiment, z,
-      results_dir = glue::glue(args$results_dir), 
-      file_fp=glue::glue(args$filename_pattern)
+      results_dir = glue(args$input_results_dir), 
+      output_file = glue(args$output_filename_pattern)
     )
-    print(glue::glue("Finished processing {experiment}/{z}..."))
+    logging::loginfo(glue("Finished processing {experiment}/{z}..."))
   }
 }
