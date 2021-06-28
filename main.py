@@ -235,7 +235,7 @@ class BGENIE_Run(object):
       print(bgen_command)
 
       if run_locally:
-        os.environ["PATH"]+=":"+os.path.join(os.environ["HOME"],".bin")
+        os.environ["PATH"] += ":"+os.path.join(os.environ["HOME"],".bin")
         for command_ in commands_:
           call(shlex.split(command_))
       else:
