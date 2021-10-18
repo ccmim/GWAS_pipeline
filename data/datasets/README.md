@@ -38,8 +38,10 @@ done
 ```
 
 To download the index files:
-```wget  -nd  biobank.ctsu.ox.ac.uk/ukb/ukb/auxdata/ukb_imp_bgi.tgz
-tar -xzvf  wget  -nd  ukb_imp_bgi.tgz
+```
+wget  -nd  biobank.ctsu.ox.ac.uk/ukb/ukb/auxdata/ukb_imp_bgi.tgz
+mv ukb_imp_bgi.tgz genotypes/imputed/full
+tar -xzvf  genotypes/imputed/full/ukb_imp_bgi.tgz
 ```
 
 For the sample files, this is recommended to avoid data duplication:
