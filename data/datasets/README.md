@@ -29,7 +29,7 @@ wget  -nd  biobank.ndph.ox.ac.uk/ukb/ukb/auxdata/ukb_snp_bim.tar
 
 ### Imputed genotypes
 
-To download the BGEN files:
+To download the BGEN files (chromosomes 1 through 22):
 
 ```
 for CHR in `seq 1 22`; do  
@@ -44,7 +44,7 @@ mv ukb_imp_bgi.tgz genotypes/imputed/full
 tar -xzvf  genotypes/imputed/full/ukb_imp_bgi.tgz
 ```
 
-For the sample files, this is recommended to avoid data duplication:
+For the sample files, the following strategy is recommended in order to avoid data duplication:
 ```
 nohup ./gfetch 22828 -m -c1 -ak11350.key > genotypes/imputed/full/download_bgen_chr${CHR}.log
 mv ukb22828_c1_b0_v3_s487213.sample genotypes/imputed/full
@@ -55,7 +55,7 @@ done
 ```
 
 
-#### Whole exome sequencing data
+### Whole exome sequencing data
 To download WES data:
 
 ```
@@ -77,8 +77,9 @@ wget  -nd  biobank.ctsu.ox.ac.uk/ukb/ukb/auxdata/UKBexomeOQFEbim.zip
 (See [Resource 200](https://biobank.ndph.ox.ac.uk/ukb/refer.cgi?id=200))
 
 
-#### Relatedness
+### Other genetic datasets
 
+#### Relatedness
 ```
 gfetch rel
 ```
