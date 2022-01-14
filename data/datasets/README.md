@@ -54,6 +54,14 @@ for CHR in `seq 2 22`; do
 done
 ```
 
+#### Minor allele frequencies and imputation scores
+
+```
+wget  -nd  biobank.ndph.ox.ac.uk/ukb/ukb/auxdata/ukb_imp_mfi.tgz
+tar -xzvf ukb_imp_mfi.tgz
+```
+
+The extracted files have the name `ukb_mfi_chr{CHR}_v3.txt`.
 
 ### Whole exome sequencing data
 To download WES data:
