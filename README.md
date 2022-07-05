@@ -7,16 +7,13 @@ The folder `analysis/` contains scripts to perform statistical analysis on the G
 The folder `download_data/` contains scripts to download data from the UK Biobank and filter the genotype files.
 
 ## Requirements
-This section lists the packages needed to run the code in this repository. If using the AMI `rodrigo-coma` on MULTI-X these requirements are satisfied in advance, so there is no need to install anything. 
-
 This code has been tested on `Python 3.6.3` and `R 3.6`.
-
 For pre-processing data, it requires the `tidyverse` package.
 For performing GWAS, it requires installing the tools `plink 1.9` (for `bed/bim/fam` files) and/or `BGENIE 1.4.1` (for `bgen` files).
 For performing downstream analysis, it requires the `qqman` package.
 
 ### Conda environment
-TO DO: provide file with the requirements to build the environment.
+_TO DO_: provide file with the requirements to build the environment.
 
 ## Usage
 The pipeline consists of scripts for:
