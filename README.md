@@ -28,21 +28,31 @@ The pipeline consists of scripts for:
 Steps 2 to 4 rely on a single `yaml` configuration file.
 
 #### Fetching data
-For this, the `ukbgene` tool must be downloaded first:
-
-` wget  -nd  biobank.ctsu.ox.ac.uk/crystal/util/ukbgene`
-
 Instructions on how to download each kind of genetic data can be found [in this link](https://biobank.ndph.ox.ac.uk/showcase/showcase/docs/ukbgene_instruct.html).
 
 #### Pre-processing data
-The script that performs this task is `code/adjust_for_covariates.R`. The current version of the code requires hardcoding the data file paths and the covariates to adjust for.
+The script that performs this task is `src/preprocess_files_for_GWAS.R`.
+Example of usage (GWAS on left-ventricular end-diastolic volume, run on unrelated British subjects using Plink):
+
+```
+Rscript src/preprocess_files_for_GWAS \
+  --phenotype_file data/phenotypes/cardiac_phenotypes/lvedv.csv
+  --phenotypes LVEDV
+  --columns_to_exclude id 
+  --samples_to_include data/ids_list/british_subjects.txt
+  --samples_to_exclude data/ids_list/related_british_subjects.txt
+  --covariates_config_yaml config_files/standard_covariates.yml
+  --output_file output/lvedv_adjusted_british.tsv
+  --gwas_software plink
+  --overwrite_output
+```
 
 #### Executing GWAS
 One needs to execute the command
 
-`python run_gwas.py --yaml_config_file <YAML_FILE>`
+`python main.py --yaml_config_file <YAML_FILE>`
 
-the complexity is located in the YAML configuration file. For the user's convenience, a Jupyter notebook is provided, in which a configuration file describing the parameters of the run can be generated.
+The complexity is located in the YAML configuration file.
 
 ##### Configuration file
 
