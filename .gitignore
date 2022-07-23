@@ -5,7 +5,10 @@ figures*
 .idea
 __pycache__
 config_files/coma
-data
+data/datasets
+data/transforms
+data/ids_list
+data/metadata
 *html
 *pdf
 tests/examples
