@@ -7,16 +7,13 @@ The folder `analysis/` contains scripts to perform statistical analysis on the G
 The folder `download_data/` contains scripts to download data from the UK Biobank and filter the genotype files.
 
 ## Requirements
-This section lists the packages needed to run the code in this repository. If using the AMI `rodrigo-coma` on MULTI-X these requirements are satisfied in advance, so there is no need to install anything. 
-
 This code has been tested on `Python 3.6.3` and `R 3.6`.
-
 For pre-processing data, it requires the `tidyverse` package.
 For performing GWAS, it requires installing the tools `plink 1.9` (for `bed/bim/fam` files) and/or `BGENIE 1.4.1` (for `bgen` files).
 For performing downstream analysis, it requires the `qqman` package.
 
 ### Conda environment
-TO DO: provide file with the requirements to build the environment.
+_TO DO_: provide file with the requirements to build the environment.
 
 ## Usage
 The pipeline consists of scripts for:
@@ -28,21 +25,31 @@ The pipeline consists of scripts for:
 Steps 2 to 4 rely on a single `yaml` configuration file.
 
 #### Fetching data
-For this, the `ukbgene` tool must be downloaded first:
-
-` wget  -nd  biobank.ctsu.ox.ac.uk/crystal/util/ukbgene`
-
 Instructions on how to download each kind of genetic data can be found [in this link](https://biobank.ndph.ox.ac.uk/showcase/showcase/docs/ukbgene_instruct.html).
 
 #### Pre-processing data
-The script that performs this task is `code/adjust_for_covariates.R`. The current version of the code requires hardcoding the data file paths and the covariates to adjust for.
+The script that performs this task is `src/preprocess_files_for_GWAS.R`.
+Example of usage (GWAS on left-ventricular end-diastolic volume, run on unrelated British subjects using Plink):
+
+```
+Rscript src/preprocess_files_for_GWAS \
+  --phenotype_file data/phenotypes/cardiac_phenotypes/lvedv.csv
+  --phenotypes LVEDV
+  --columns_to_exclude id 
+  --samples_to_include data/ids_list/british_subjects.txt
+  --samples_to_exclude data/ids_list/related_british_subjects.txt
+  --covariates_config_yaml config_files/standard_covariates.yml
+  --output_file output/lvedv_adjusted_british.tsv
+  --gwas_software plink
+  --overwrite_output
+```
 
 #### Executing GWAS
 One needs to execute the command
 
-`python run_gwas.py --yaml_config_file <YAML_FILE>`
+`python main.py --yaml_config_file <YAML_FILE>`
 
-the complexity is located in the YAML configuration file. For the user's convenience, a Jupyter notebook is provided, in which a configuration file describing the parameters of the run can be generated.
+The complexity is located in the YAML configuration file.
 
 ##### Configuration file
 
