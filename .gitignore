@@ -14,3 +14,5 @@ data/metadata
 tests/examples
 analysis/rsconnect
 .project
+runs/jobs
+runs/logs
