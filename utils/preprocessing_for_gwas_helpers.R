@@ -1,3 +1,4 @@
+options(error=recover)
 # install.packages("reader") # to use reader::get.delim (to infer table delimiter)
 suppressPackageStartupMessages({
   library(dplyr)
@@ -8,9 +9,10 @@ suppressPackageStartupMessages({
 get_include_list <- function(samples_to_include=NULL) {  
   if (is.null(samples_to_include)) {
     #TODO: change default
-    wl <- read.delim("data/ids_list/cmr_british_ids.txt", sep = reader::get.delim("data/ids_list/cmr_british_ids.txt"))[,1]
+    #wl <- read.delim("data/ids_list/british_ids.txt", sep = reader::get.delim("data/ids_list/british_ids.txt"))[,1]
+    wl <- read.delim("data/ids_list/british_ids.txt")#, sep = reader::get.delim("data/ids_list/british_ids.txt"))[,1]
   } else if (length(samples_to_include) == 1) {
-    wl <- read.delim(samples_to_include, sep = reader::get.delim(samples_to_include))[,1]
+    wl <- read.delim(samples_to_include)#, sep = reader::get.delim(samples_to_include))[,1]
   } else {
     wl <- Reduce(intersect, sapply(samples_to_include, function(file) read.delim(file, sep = reader::get.delim(file))[,1]))
   }
@@ -35,8 +37,11 @@ ukb_gen_read_sample <- function (file, col.names = c("id_1", "id_2", "missing"),
 }
 
 get_sample_list <- function(samples_to_include=NULL, samples_to_exclude=NULL) {
-  include_list <- get_include_list(samples_to_include)
+  include_list <- get_include_list(samples_to_include)$ID
   exclude_list <- get_exclude_list(samples_to_exclude)
+  if (length(exclude_list) == 0){
+    return(include_list)
+  }
   setdiff(include_list, exclude_list)
 }
 
@@ -119,7 +124,6 @@ read_raw_pheno <- function(pheno_file, pheno_names=NULL, exclude_columns=NULL) {
   # pheno_file 
   # pheno_names: vector of column names (phenotypes). If is.null(pheno_names), all columns are used except those in exclude_columns (if any)
   # exclude_columns: only used if is.null(pheno_names)
-  
   if (!file.exists(pheno_file)) {
     #TODO: add logging
       logging::logerror("File {pheno_file} was not found." %>% glue)
@@ -128,6 +132,10 @@ read_raw_pheno <- function(pheno_file, pheno_names=NULL, exclude_columns=NULL) {
   
   delim <- reader::get.delim(pheno_file)
   pheno_df <- read.table(pheno_file, sep=delim, header=TRUE)
+  if (is.null(pheno_df$ID)) {
+    logging::logerror("Column ID seems to be absent in your phenotype file. Aborting...")
+  }
+
   rownames(pheno_df) <- as.character(pheno_df$ID)
   if (is.null(pheno_names)) {
     pheno_names <- colnames(pheno_df)
