@@ -1,5 +1,5 @@
-from IPython import embed
-from PATHS import *
+# from IPython import embed
+from data.code.PATHS import *
 import shlex
 from subprocess import call, check_output
 

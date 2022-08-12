@@ -16,9 +16,9 @@ if __name__ == "__main__":
 
     chromosome = 1
 
-    for region in df.head().iterrows():
+    #for region in df.head().iterrows():
 
-    #for region in df.iterrows():
+    for region in df.iterrows():
 
         region = get_region_data(region)
         
