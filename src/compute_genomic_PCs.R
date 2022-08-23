@@ -10,28 +10,30 @@ library(glue)
 #  "pooled_qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__all__QQ-plot.png")
 #)
 
-gbr_ids_file <- glue("{data_dir}/subject_ids/british_ids.txt")
-cmr_gbr_ids_file <- glue("{data_dir}/subject_ids/cmr_british_ids.txt")
-
 ##########################################################################################
 
 dataset_dir <- "data/datasets"
 transforms_dir <- "data/transforms"
 
+gbr_ids_file <- glue("{dataset_dir}/ids_list/british_fid_iid.txt")
+cmr_gbr_ids_file <- glue("{dataset_dir}/ids_list/cmr_british_ids.txt")
+
 bed_file_pattern <- "{dataset_dir}/calls/ukb22418_c{chromosome}_b0_v2.bed"
 bim_file_pattern <- "{dataset_dir}/calls/ukb_snp_chr{chromosome}_v2.bim"
 fam_file_pattern <- "{dataset_dir}/calls/ukb22418_c{chromosome}_b0_v2_s488170.fam"
-long_range_LD_file <- "{dataset_dir}/long_range_LD_regions.bed"
+long_range_LD_file <- glue("{dataset_dir}/long_range_LD_regions.bed")
 
-geno_file_for_pca_chr1 <- "{transforms_dir}/GenomicPCA/ukb_cal_chr1_v2_GBR_indiv_snps_for_PCA"
-geno_file_for_pca <- "{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv_snps_for_PCA"
-bfile_filtered <- "{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv_snps_for_PCA"
-genomic_pca_file <- "{transforms_dir}/genomicPCs_unrelated_GBR.tsv"
-files_to_merge <- "{transforms_dir}/GenomicPCA/files_to_merge.txt"
-snps_to_exclude_file <- "{transforms_dir}/GenomicPCA/exclude_snps_for_pca.txt"
+geno_file_for_pca_chr1 <- glue("{transforms_dir}/GenomicPCA/ukb_cal_chr1_v2_GBR_indiv_snps_for_PCA")
+geno_file_for_pca <- glue("{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv_snps_for_PCA")
+bfile_filtered <- glue("{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv_snps_for_PCA")
+files_to_merge <- glue("{transforms_dir}/GenomicPCA/files_to_merge.txt")
+snps_to_exclude_file <- glue("{transforms_dir}/GenomicPCA/exclude_snps_for_pca.txt")
 
 out_bfile_pattern <- "{transforms_dir}/GenomicPCA/genotypes/ukb_cal_chr{chromosome}_v2_GBR_indiv"
-
+prunein_file_pattern <- paste0(out_bfile_pattern, ".prune.in")
+prunein_snps_file <- glue("{transforms_dir}/snps_for_pca_prune.in")
+genomic_pca_file <- glue("{transforms_dir}/genomicPCs_GBR.tsv")
+_
 ##########################################################################################
 
 extract_variants_in_range <- function(chromosome, start, end) {
@@ -74,6 +76,25 @@ get_snps_below_hwe_p_thr <- function(chromosome, hwe_p_threshold=1e-5) {
   as.character(hwe_df$SNP)
 }
 
+get_snps_to_exclude <- function(ofile) {
+  
+  snps_below_maf_thr <- unlist(lapply(1:22, get_snps_below_maf_thr))
+  snps_above_miss_thr <- unlist(lapply(1:22, get_snps_above_miss_thr))
+  snps_below_hwe_p_thr <- unlist(lapply(1:22, get_snps_below_hwe_p_thr))
+
+  snps_to_exclude <- unique(c(
+    ambiguous_strand_snps, 
+    snps_below_maf_thr, 
+    snps_above_miss_thr, 
+    snps_below_hwe_p_thr
+  ))
+
+  snps_exclude_df <- as.data.frame(snps_to_exclude)
+  write.csv(snps_exclude_df, ofile, quote = FALSE, row.names = FALSE)
+  snps_exclude_df
+
+}
+
 ##########################################################################################
 
 long_range_ld_df <- read.table(long_range_LD_file, sep = "\t", header=TRUE)
@@ -85,61 +106,57 @@ ambiguous_strand_snps <- lapply(1:22, extract_variants_ambiguous_strand)
 ambiguous_strand_snps <- unlist(ambiguous_strand_snps)
 
 for (chromosome in 1:22) {
-  bfile <- glue(bfile_pattern)
+  bedfile <- glue(bed_file_pattern)
+  bimfile <- glue(bim_file_pattern)
+  famfile <- glue(fam_file_pattern)
+  bedbimfam <- glue("--bed {bedfile} --bim {bimfile} --fam {famfile}")
+  
   out_bfile <- glue(out_bfile_pattern)
-  plink_command_maf <- glue("plink --keep {cmr_gbr_ids_file} --freq --bfile {bfile} --out {out_bfile}")
-  system(plink_command_maf)
-  plink_command_missing <- glue("plink --keep {cmr_gbr_ids_file} --missing --bfile {bfile} --out {out_bfile}")
-  system(plink_command_missing)
-  plink_command_hwe <- glue("plink --keep {cmr_gbr_ids_file} --hardy --bfile {bfile} --out {out_bfile}")
-  system(plink_command_hwe)
+  plink_command_maf <- glue("plink --keep {gbr_ids_file} --freq {bedbimfam} --out {out_bfile}")
+  #system(plink_command_maf)
+  plink_command_missing <- glue("plink --keep {gbr_ids_file} --missing {bedbimfam} --out {out_bfile}")
+  #system(plink_command_missing)
+  plink_command_hwe <- glue("plink --keep {gbr_ids_file} --hardy {bedbimfam} --out {out_bfile}")
+  #system(plink_command_hwe)
 }
 
-snps_below_maf_thr <- unlist(lapply(1:22, get_snps_below_maf_thr))
-snps_above_miss_thr <- unlist(lapply(1:22, get_snps_above_miss_thr))
-snps_below_hwe_p_thr <- unlist(lapply(1:22, get_snps_below_hwe_p_thr))
-
-snps_to_exclude <- unique(
-  c(ambiguous_strand_snps, 
-    snps_below_maf_thr, 
-    snps_above_miss_thr, 
-    snps_below_hwe_p_thr)
-)
-
-snps_exclude_df <- as.data.frame(snps_to_exclude)
-write.csv(snps_exclude_df, snps_to_exclude_file, quote = FALSE, row.names = FALSE)
+snps_exclude_df <- get_snps_to_exclude(snps_to_exclude_file)
 
 for(chromosome in 1:22) {
-  bfile <- glue(bfile_pattern)
-  plink_ld_prune_command <- "plink --exclude {snps_to_exclude_file} --indep-pairwise 100 10 0.1 -bfile {bfile} --out {bfile}"
+  bedfile <- glue(bed_file_pattern)
+  bimfile <- glue(bim_file_pattern)
+  famfile <- glue(fam_file_pattern)
+  bedbimfam <- glue("--bed {bedfile} --bim {bimfile} --fam {famfile}")
+  out_bfile <- glue(out_bfile_pattern)
+
+  plink_ld_prune_command <- "plink --exclude {snps_to_exclude_file} --indep-pairwise 100 10 0.1 {bedbimfam} --out {out_bfile}"
   plink_ld_prune_command <- glue(plink_ld_prune_command)
   system(plink_ld_prune_command)
 }
 
-prunein_file_pattern <- paste0(bfile_pattern, ".prune.in")
 prunein_snps <- unlist(lapply(1:22, function(chromosome) read.table(glue(prunein_file_pattern))[,1]))
 prunein_snps_df <- as.data.frame(prunein_snps)
-prunein_snps_file <- "~/GWAS/data/genotypes/calls/snps_for_pca_prune.in"
 write.csv(prunein_snps_df, prunein_snps_file, quote = FALSE, row.names = FALSE)
 
 if (!file.exists(files_to_merge)) {
-  for(chromosome in 1:22) {
-    system(glue("echo ~/GWAS/data/genotypes/calls/PCA_on_GBR/ukb_cal_chr{chromosome}_v2_29102_GBR_indiv_snps_for_PCA >> {files_to_merge}"))
+  for (chromosome in 1:22) {
+    file <- glue(out_bfile_pattern)
+    system(glue("echo {file} >> {files_to_merge}"))
   }
 }
 
 
 if (!file.exists(geno_file_for_pca)) {
-  system(paste(
+  command <- paste(
     "plink", 
     "--bfile", geno_file_for_pca_chr1, 
     "--merge-list", files_to_merge, 
-    "--make-bed", "--out", geno_file_for_pca)
+    "--make-bed", "--out", geno_file_for_pca
   )
+  system(command)
 }
 
 extract_id <- function(x) strsplit(x, ":")[[1]][1]
-
 
 if (!file.exists(genomic_pca_file)) {
   genomic_pca <- flashpcaR::flashpca(bfile_filtered, ndim=10)
