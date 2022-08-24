@@ -54,7 +54,7 @@ def run_bgenie(regions, args, previous_chromosome, job_count):
         bgen_file = OUTPUT_GENOTYPE_FILE_PATTERN.format(**region)
         region_name = "chr{chromosome}_{start_pos}-{end_pos}.txt".format(**region)
         gwas_file_per_region = os.path.join(args.gwas_folder, region_name)
-        bgenie_command = f"bgenie --bgen {bgen_file} --pheno {pheno_file} --out {gwas_file_per_region} --pvals"
+        bgenie_command = f"bgenie --bgen {bgen_file} --pheno {pheno_file} --out {gwas_file_per_region} --pvals --thread 8"
         bgenie_commands.append(bgenie_command)
     
     first_region = regions[0]
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     parser.add_argument("--gwas_folder")
     parser.add_argument("--pheno_file")
     parser.add_argument("--n_regions_per_job", default=8)
-    parser.add_argument("--dry-run", "--dry_run", default=False)
+    parser.add_argument("--dry-run", "--dry_run", default=False, action="store_true")
     args = parser.parse_args()
     
     pheno_file = args.pheno_file
@@ -123,7 +123,8 @@ if __name__ == "__main__":
         job_config = {
           "jobname": jobname,
           "memory_limit": "8G", 
-          "walltime": "01:00:00",           
+          "walltime": "01:00:00",
+          "open_mp_nodes": 8,           
           "stderr": f"runs/logs/bgenie/{jobname}.err", 
           "stdout": f"runs/logs/bgenie/{jobname}.out"
         }
