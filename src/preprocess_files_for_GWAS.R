@@ -18,7 +18,7 @@ get_args <- function() {
   parser$add_argument("--columns_to_exclude", default=NULL, nargs="+")
   
   # Samples
-  parser$add_argument("--samples_to_include", nargs="+", default="data/ids_list/cmr_british_ids.txt")
+  parser$add_argument("--samples_to_include", nargs="+", default="data/datasets/ids_list/british_ids.txt")
   parser$add_argument("--samples_to_exclude", nargs="+", default=NULL)
   parser$add_argument("--bgen_sample_file", default=NULL)
   
