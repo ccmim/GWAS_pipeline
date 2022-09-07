@@ -30,10 +30,13 @@ files_to_merge <- glue("{transforms_dir}/GenomicPCA/files_to_merge.txt")
 snps_to_exclude_file <- glue("{transforms_dir}/GenomicPCA/exclude_snps_for_pca.txt")
 
 out_bfile_pattern <- "{transforms_dir}/GenomicPCA/genotypes/ukb_cal_chr{chromosome}_v2_GBR_indiv"
+maf_file_pattern <- paste0(out_bfile_pattern, ".frq")
+missingness_file_pattern <- paste0(out_bfile_pattern, ".lmiss")
 prunein_file_pattern <- paste0(out_bfile_pattern, ".prune.in")
+hwe_file_pattern <- paste0(out_bfile_pattern, ".hwe")
 prunein_snps_file <- glue("{transforms_dir}/snps_for_pca_prune.in")
 genomic_pca_file <- glue("{transforms_dir}/genomicPCs_GBR.tsv")
-_
+
 ##########################################################################################
 
 extract_variants_in_range <- function(chromosome, start, end) {
@@ -53,15 +56,14 @@ extract_variants_ambiguous_strand <- function(chromosome) {
 }
 
 get_snps_below_maf_thr <- function(chromosome, maf_threshold=0.025) {
-  maf_file_pattern <- paste0(out_bfile_pattern, ".frq")
   maf_file <- glue(maf_file_pattern)
+  print(maf_file)
   maf_df <- read.table(maf_file, header=TRUE)
   maf_df <- maf_df %>% filter(MAF < maf_threshold)
   as.character(maf_df$SNP)
 }
 
 get_snps_above_miss_thr <- function(chromosome, missingness_threshold=0.015) {
-  missingness_file_pattern <- paste0(out_bfile_pattern, ".lmiss")
   missingness_file <- glue(missingness_file_pattern)
   missingness_df <- read.table(missingness_file, header=TRUE)
   missingness_df <- missingness_df %>% filter(F_MISS > missingness_threshold)
@@ -69,7 +71,6 @@ get_snps_above_miss_thr <- function(chromosome, missingness_threshold=0.015) {
 }
 
 get_snps_below_hwe_p_thr <- function(chromosome, hwe_p_threshold=1e-5) {
-  hwe_file_pattern <- paste0(out_bfile_pattern, ".hwe")
   hwe_file <- glue(hwe_file_pattern)
   hwe_df <- read.table(hwe_file, header=TRUE)
   hwe_df <- hwe_df %>% filter(P < hwe_p_threshold)
@@ -113,11 +114,11 @@ for (chromosome in 1:22) {
   
   out_bfile <- glue(out_bfile_pattern)
   plink_command_maf <- glue("plink --keep {gbr_ids_file} --freq {bedbimfam} --out {out_bfile}")
-  #system(plink_command_maf)
+  system(plink_command_maf)
   plink_command_missing <- glue("plink --keep {gbr_ids_file} --missing {bedbimfam} --out {out_bfile}")
-  #system(plink_command_missing)
+  system(plink_command_missing)
   plink_command_hwe <- glue("plink --keep {gbr_ids_file} --hardy {bedbimfam} --out {out_bfile}")
-  #system(plink_command_hwe)
+  system(plink_command_hwe)
 }
 
 snps_exclude_df <- get_snps_to_exclude(snps_to_exclude_file)
