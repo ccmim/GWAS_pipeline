@@ -23,13 +23,14 @@ bim_file_pattern <- "{dataset_dir}/calls/ukb_snp_chr{chromosome}_v2.bim"
 fam_file_pattern <- "{dataset_dir}/calls/ukb22418_c{chromosome}_b0_v2_s488170.fam"
 long_range_LD_file <- glue("{dataset_dir}/long_range_LD_regions.bed")
 
-geno_file_for_pca_chr1 <- glue("{transforms_dir}/GenomicPCA/ukb_cal_chr1_v2_GBR_indiv_snps_for_PCA")
-geno_file_for_pca <- glue("{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv_snps_for_PCA")
 bfile_filtered <- glue("{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv_snps_for_PCA")
 files_to_merge <- glue("{transforms_dir}/GenomicPCA/files_to_merge.txt")
 snps_to_exclude_file <- glue("{transforms_dir}/GenomicPCA/exclude_snps_for_pca.txt")
 
 out_bfile_pattern <- "{transforms_dir}/GenomicPCA/genotypes/ukb_cal_chr{chromosome}_v2_GBR_indiv"
+geno_file_for_pca_chr1 <- glue("{transforms_dir}/GenomicPCA/genotypes/ukb_cal_chr1_v2_GBR_indiv")
+geno_file_for_pca <- glue("{transforms_dir}/GenomicPCA/ukb_cal_all_chrs_v2_GBR_indiv")
+
 maf_file_pattern <- paste0(out_bfile_pattern, ".frq")
 missingness_file_pattern <- paste0(out_bfile_pattern, ".lmiss")
 prunein_file_pattern <- paste0(out_bfile_pattern, ".prune.in")
@@ -114,11 +115,11 @@ for (chromosome in 1:22) {
   
   out_bfile <- glue(out_bfile_pattern)
   plink_command_maf <- glue("plink --keep {gbr_ids_file} --freq {bedbimfam} --out {out_bfile}")
-  system(plink_command_maf)
+  #system(plink_command_maf)
   plink_command_missing <- glue("plink --keep {gbr_ids_file} --missing {bedbimfam} --out {out_bfile}")
-  system(plink_command_missing)
+  #system(plink_command_missing)
   plink_command_hwe <- glue("plink --keep {gbr_ids_file} --hardy {bedbimfam} --out {out_bfile}")
-  system(plink_command_hwe)
+  #system(plink_command_hwe)
 }
 
 snps_exclude_df <- get_snps_to_exclude(snps_to_exclude_file)
@@ -132,7 +133,7 @@ for(chromosome in 1:22) {
 
   plink_ld_prune_command <- "plink --exclude {snps_to_exclude_file} --indep-pairwise 100 10 0.1 {bedbimfam} --out {out_bfile}"
   plink_ld_prune_command <- glue(plink_ld_prune_command)
-  system(plink_ld_prune_command)
+  #system(plink_ld_prune_command)
 }
 
 prunein_snps <- unlist(lapply(1:22, function(chromosome) read.table(glue(prunein_file_pattern))[,1]))
@@ -154,13 +155,14 @@ if (!file.exists(geno_file_for_pca)) {
     "--merge-list", files_to_merge, 
     "--make-bed", "--out", geno_file_for_pca
   )
+  print(command)
   system(command)
 }
 
 extract_id <- function(x) strsplit(x, ":")[[1]][1]
 
 if (!file.exists(genomic_pca_file)) {
-  genomic_pca <- flashpcaR::flashpca(bfile_filtered, ndim=10)
+  genomic_pca <- flashpcaR::flashpca(geno_file_for_pca, ndim=10)
   pca_proj <- genomic_pca$projection
   pca_proj_df <- as.data.frame(pca_proj)
   colnames(pca_proj_df) <- paste0("PC", 1:ncol(pca_proj_df))
