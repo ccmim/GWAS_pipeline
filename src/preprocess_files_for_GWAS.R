@@ -40,12 +40,12 @@ generate_adj_pheno <- function(
   covariates_df <- generate_covariates_df(covariates_config)
   
   logging::loginfo("Generating covariate-adjusted phenotypes...")
-  kk = create_adj_pheno_df(raw_pheno_df, covariates_df)
-  adj_pheno_df <- kk$adj_pheno_df
+  covariate_adj_fit = adj_by_covariates(raw_pheno_df, covariates_df)
+  adj_pheno_df <- covariate_adj_fit$adj_pheno_df
   
   if (!is.null(fit_summaries_file)) {
       logging::loginfo(glue::glue("Saving a summary of the fitted model to file {fit_summaries_file}..."))
-      fit_summaries_list <- kk$adj_pheno_df    
+      fit_summaries_list <- covariate_adj_fit$fit_summaries
       saveRDS(fit_summaries_list, fit_summaries_file)
   }
   

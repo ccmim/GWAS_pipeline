@@ -143,7 +143,7 @@ inverse_normalise <- function(x)
     qnorm( (rank(x,na.last="keep")-0.5) / sum(!is.na(x)) )
 
 
-create_adj_pheno_df <- function(raw_pheno_df, covariates_df) {
+adj_by_covariates <- function(raw_pheno_df, covariates_df) {
 
   # Add covariates to the phenotype file to then perform linear regression
   # ID | phenotype_1 | phenotype_2 | ... | covariate_1 | covariate_2 | ...
