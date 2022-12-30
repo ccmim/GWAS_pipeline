@@ -2,14 +2,6 @@ library(dplyr)
 library(ggplot2)
 library(glue)
 
-# GWAS_DIR <- "/home/rodrigo/GWAS/output/coma"
-
-#gwas_paths <- list(
-#  "qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__{as.character(input$z)}__{input$suffix}__QQ-plot.png"),
-#  "manhattan" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__{as.character(input$z)}__{input$suffix}__manhattan.png"),
-#  "pooled_qqplot" = file.path(GWAS_DIR, "{input$experiment}/{input$suffix}/figures/GWAS__all__QQ-plot.png")
-#)
-
 ##########################################################################################
 
 dataset_dir <- "data/datasets"
@@ -107,6 +99,10 @@ snps_in_ld <- unlist(snps_in_ld)
 ambiguous_strand_snps <- lapply(1:22, extract_variants_ambiguous_strand)
 ambiguous_strand_snps <- unlist(ambiguous_strand_snps)
 
+maf_command_pattern <- "plink --keep {gbr_ids_file} --freq {bedbimfam} --out {out_bfile}"
+missing_command_pattern <- "plink --keep {gbr_ids_file} --missing {bedbimfam} --out {out_bfile}"
+hwe_command_pattern <- "plink --keep {gbr_ids_file} --hardy {bedbimfam} --out {out_bfile}"
+
 for (chromosome in 1:22) {
   bedfile <- glue(bed_file_pattern)
   bimfile <- glue(bim_file_pattern)
@@ -114,15 +110,17 @@ for (chromosome in 1:22) {
   bedbimfam <- glue("--bed {bedfile} --bim {bimfile} --fam {famfile}")
   
   out_bfile <- glue(out_bfile_pattern)
-  plink_command_maf <- glue("plink --keep {gbr_ids_file} --freq {bedbimfam} --out {out_bfile}")
+  plink_command_maf <- glue(maf_command_pattern)
   #system(plink_command_maf)
-  plink_command_missing <- glue("plink --keep {gbr_ids_file} --missing {bedbimfam} --out {out_bfile}")
+  plink_command_missing <- glue(missing_command_pattern)
   #system(plink_command_missing)
-  plink_command_hwe <- glue("plink --keep {gbr_ids_file} --hardy {bedbimfam} --out {out_bfile}")
+  plink_command_hwe <- glue(hwe_command_pattern)
   #system(plink_command_hwe)
 }
 
 snps_exclude_df <- get_snps_to_exclude(snps_to_exclude_file)
+
+plink_ld_prune_command <- "plink --exclude {snps_to_exclude_file} --indep-pairwise 100 10 0.1 {bedbimfam} --out {out_bfile}"
 
 for(chromosome in 1:22) {
   bedfile <- glue(bed_file_pattern)
@@ -131,7 +129,6 @@ for(chromosome in 1:22) {
   bedbimfam <- glue("--bed {bedfile} --bim {bimfile} --fam {famfile}")
   out_bfile <- glue(out_bfile_pattern)
 
-  plink_ld_prune_command <- "plink --exclude {snps_to_exclude_file} --indep-pairwise 100 10 0.1 {bedbimfam} --out {out_bfile}"
   plink_ld_prune_command <- glue(plink_ld_prune_command)
   #system(plink_ld_prune_command)
 }
@@ -147,14 +144,9 @@ if (!file.exists(files_to_merge)) {
   }
 }
 
+merge_command <- "plink --bfile {geno_file_for_pca_chr1} --merge-list {files_to_merge} --make-bed --out {geno_file_for_pca}"
 
 if (!file.exists(geno_file_for_pca)) {
-  command <- paste(
-    "plink", 
-    "--bfile", geno_file_for_pca_chr1, 
-    "--merge-list", files_to_merge, 
-    "--make-bed", "--out", geno_file_for_pca
-  )
   print(command)
   system(command)
 }
