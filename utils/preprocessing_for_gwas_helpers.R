@@ -159,16 +159,17 @@ adj_by_covariates <- function(raw_pheno_df, covariates_df) {
     
     logging::loginfo(glue::glue("Processing phenotype {pheno_names[i]}..."))
     fit <- fit_linear_model(pheno_and_covar_df, pheno_names[i], covariate_names)
-    # print(formula_as_text)
 
     adj_pheno = resid(fit)
     adj_pheno <- inverse_normalise(adj_pheno)
     adj_pheno_df[, pheno_names[i]] <- adj_pheno
     
     fit_summary <- summary(fit)
-    fit_summary_list <- c(fit_summary_list, fit_summary)
-    # lifit_summary)
+    
+    fit_summary_list <- c(fit_summary_list, list(fit_summary$coefficients))
   }
+  
+  names(fit_summary_list) <- pheno_names
   
   list("adj_pheno_df"=adj_pheno_df, "fit_summaries"=fit_summary_list)
 }
