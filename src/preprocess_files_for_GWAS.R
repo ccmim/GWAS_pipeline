@@ -83,7 +83,7 @@ get_args <- function() {
   parser$add_argument("--columns_to_exclude", default=NULL, nargs="+")
   
   # Samples
-  parser$add_argument("--samples_to_include", nargs="+", default="data/datasets/ids_list/32580_british_from_35610.txt")
+  parser$add_argument("--samples_to_include", nargs="+", default="data/datasets/ids_list/31838_unrelated_british_from_35610.txt")
   parser$add_argument("--samples_to_exclude", nargs="+", default=NULL)
   parser$add_argument("--bgen_sample_file", default=NULL)
   
