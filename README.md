@@ -2,7 +2,7 @@
 
 This repository contains code to execute GWAS on UK Biobank data, using the Plink and BGENIE tools, and perform downstream analysis on the results.
 
-The folder `code/` contains scripts to perform pre-processing of the data and GWAS execution.
+The folder `src/` contains scripts to perform pre-processing of the data and GWAS execution.
 The folder `analysis/` contains scripts to perform statistical analysis on the GWAS results and generate figures (like Manhattan plots or Q-Q plot).
 The folder `download_data/` contains scripts to download data from the UK Biobank and filter the genotype files.
 
