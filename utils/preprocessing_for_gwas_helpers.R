@@ -195,8 +195,9 @@ format_df_for_tool <- function(pheno_df, gwas_software="plink", ukb.sample=NULL)
     })
     names(sample_df)[1] <- "ID"
     sample_df <- mutate(sample_df, ID=as.character(ID))
+    logging::loginfo("Ordering table according to BGEN samples file...")
     pheno_df <- sample_df %>% left_join(pheno_df, by = "ID") %>% select("ID", all_of(pheno_names)) # select(.dots = pheno_names)
-    pheno_df <- pheno_df %>% arrange(ID)
+    # pheno_df <- pheno_df %>% arrange(ID)
   }
   
   pheno_df
