@@ -7,20 +7,40 @@ The folder `analysis/` contains scripts to perform statistical analysis on the G
 The folder `download_data/` contains scripts to download data from the UK Biobank and filter the genotype files.
 
 ## Requirements
-This code has been tested on `Python 3.6.3` and `R 3.6`.
-For pre-processing data, it requires the `tidyverse` package.
-For performing GWAS, it requires installing the tools `plink 1.9` (for `bed/bim/fam` files) and/or `BGENIE 1.4.1` (for `bgen` files).
-For performing downstream analysis, it requires the `qqman` package.
+### Software environment
+A Dockerfile is provided for running most of the code in this repository. You can also download the [corresponding Docker image](https://hub.docker.com/r/rbonazzola/gwas_pipeline) from DockerHub.
+Alternatively, you can use the Dockerfile as a guide to build your own environment without Docker.
 
-### Conda environment
-_TO DO_: provide file with the requirements to build the environment.
+The image is based on Ubuntu 22.04 and contains the following tools:
+- R 4.3.1
+- Python 3.11
+- qctool 2.2.0
+- bgenie 1.3
+- plink 1.9
+- GreedyRelated (to remove related subjects)
+
+If your are on a platform on which Singularity is supported (but Docker isn't), you should be able to convert the Docker image into a Singularity SIF file directly from DockerHub, by using the following command: 
+
+```bash
+singularity build <SING_IMAGE_NAME>.sif docker-daemon://<DOCKER_IMAGE_NAME>:<TAG>
+```
+
+For computing genetic PCs, a different Docker image is used, namely the one provided by the author of `flashpca`: see https://github.com/gabraham/flashpca/blob/master/docker.md.
+
+For LocusZoom plots, another Docker image will be provided soon.
 
 ## Usage
 The pipeline consists of scripts for:
-1) **Fetching data**: download genotype data from the UK Biobank and image-derived phenotypes from our AWS S3 buckets.
-2) **Pre-processing data**: adjusting the phenotypes for a set of covariates and performing inverse-normalization.
-3) **Executing GWAS**: self-explanatory. 
-4) **Analyze results**: explore the output of the GWAS by generating Manhattan plots and Q-Q plots. Integrating data from other sources in order to interpret the results.   
+
+1) **Fetching the data**: download genotype and covariate data from the UK Biobank.
+2) **Data pre-processing**: 
+	- 2a. Genetic data: filtering out subjects and genetic variants and, optionally, splitting the genome into small regions to ease with subsequent parallel processing.
+	- 2b. Generate genetic PCs.
+	- 2c. Phenotypic data: adjusting the phenotypes for a set of covariates and performing inverse-normalization on the phenotypic scores (custom R script)
+	- 2d. Filtering for related subjects and other characteristics: scripts to produce the final files that will be the input to the GWAS.
+3) **Executing GWAS**: self-explanatory. Currently, we support Plink and BGENIE.
+4) **Compile results and generate figures**: compile the GWAS results and generate Manhattan plots and Q-Q plots. You can also generate LocusZoom plots.
+5) **Downstream analysis**: Integrate data from other sources in order to interpret the results. We currently support: proximity analysis using `biomaRt`, gene ontology term enrichment with `g:Profiler`, transcriptome-wide association studies with `S-PrediXcan` and pleiotropy analysis using the IEU GWAS Open Project.
 
 Steps 2 to 4 rely on a single `yaml` configuration file.
 
@@ -47,7 +67,7 @@ Rscript src/preprocess_files_for_GWAS \
 #### Executing GWAS
 One needs to execute the command
 
-`python main.py --yaml_config_file <YAML_FILE>`
+`python main.py -c <YAML_FILE>`
 
 The complexity is located in the YAML configuration file.
 
