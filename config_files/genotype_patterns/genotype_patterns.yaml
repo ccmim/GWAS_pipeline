@@ -1,3 +1,5 @@
-bed: "data/genotypes/calls/ukb_cal_chr{chromosome}_v2_31803_indiv.bed"
-bim: "data/genotypes/calls/ukb_cal_chr{chromosome}_v2_31803_indiv.bim"
-fam: "data/genotypes/calls/ukb_cal_chr{chromosome}_v2_31803_indiv.fam"
+bed: "data/datasets/calls/ukb22418_c{chromosome}_b0_v2.bed"
+bim: "data/datasets/calls/ukb_snp_chr{chromosome}_v2.bim"
+fam: "data/datasets/calls/ukb22418_c{chromosome}_b0_v2_s488170.fam" 
+bgen: "data/transforms/genotypes_by_region/ukb_chr{chromosome}_{start_pos}-{end_pos}_snps_passing_QC.bgen"
+bgen_sample_file: "data/transforms/genotypes_by_region/samples.txt"

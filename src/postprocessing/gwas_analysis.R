@@ -14,7 +14,7 @@ parser <- ArgumentParser()
 parser$add_argument("--output_folder", default="output/coma")
 parser$add_argument("--gwas_folder", nargs="+")
 parser$add_argument("--gwas_pattern", default="GWAS__{phenotype}", help="File pattern including the \"{phenotype}\" field, *without extensions*.")
-parser$add_argument("--phenotypes", nargs="+", default=sapply(0:15, function(x) paste0("z", x)) )
+parser$add_argument("--phenotypes", nargs="+", default=sapply(0:7, function(x) paste0("z00", x)) )
 
 parser$add_argument("--title", default=FALSE, action="store_true")
 parser$add_argument("--cache_rds", action="store_true", default=FALSE)
@@ -27,6 +27,7 @@ args <- parser$parse_args()
 
 # TODO: put every file pattern into a configuration file
 output_dir <- file.path(args$output_folder, "{args$gwas_folder}")
+output_dir <- "{args$gwas_folder}"
 # text files
 gwas_fp <- file.path(output_dir, paste0(args$gwas_pattern, ".tsv"))
 gwas_fp_rds <- file.path(output_dir, paste0(args$gwas_pattern, ".rds"))
@@ -65,9 +66,11 @@ gwas_files <- character()
 for (run_id in args$gwas_folder) {
   
   # TOFIX: run_id is not what I want here.
-  logging::loginfo("Processing experiment with ID {run_id}" %>% glue)
-  
-  dir.create(glue::glue(figs_dir))
+  logging::loginfo("Processing run with ID {run_id}" %>% glue)
+ 
+  if ( !file.exists(glue::glue(figs_dir))) { 
+    dir.create(glue::glue(figs_dir))
+  }
   pvals <- vector(length = 0)
   
   # gwas_figs_dir <- file.path(run_id, "figs")

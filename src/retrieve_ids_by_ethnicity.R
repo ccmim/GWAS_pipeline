@@ -1,4 +1,4 @@
-# all subjects for which we have genotypes
+  # all subjects for which we have genotypes
 all_ids <- read.table("../data/calls/ukb11350_cal_chr9_v2_s488282.fam", header=FALSE)[,1]
 
 cmr_ids <- read.table("../data/Cardiac_Function_Indexes_11350.tsv", header=TRUE, sep="\t") %>% .$`Subject.ID`

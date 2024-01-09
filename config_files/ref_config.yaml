@@ -5,18 +5,17 @@ sample_white_lists:
 
 sample_black_lists: null
 
-covariates: "config_files/covariates/std_covariates.yaml"
+covariates_config: "config_files/covariates/std_covariates_PC.yaml"
 
-quality_control: "config_files/quality_control/quality_control.yaml"
+quality_control: "quality_control/quality_control.yaml"
 
 filename_patterns: {
   # input
-  genotype: "config_files/genotype_patterns/genotype_patterns.yaml",
-  phenotype: "data/cardiac_indices/CMR_info_LVRVLARA_11350.csv",
-  phenotype_intermediate: "data/cardiac_indices/adjusted_for_covariates/CMR_info_LVRVLARA_11350.csv",
-  tmpdir: "data/tmp/traditional_indices/{suffix}",
+  genotype: "genotype_patterns/genotype_patterns.yaml",
+  phenotype_file: "/home/home01/scrb/01_repos/CardiacCOMA/mlruns/{experiment_id}/{run_id}/artifacts/output/latent_vector.csv",
+  phenotype_intermediate: "/home/home01/scrb/01_repos/CardiacCOMA/mlruns/{experiment_id}/{run_id}/artifacts/output/latent_vector_adj_10PCs.csv",
   # output
-  gwas: "output/traditional_indices/{suffix}/GWAS__{{phenotype}}__{suffix}"
+  gwas: "/home/home01/scrb/01_repos/CardiacCOMA/mlruns/{experiment_id}/{run_id}/artifacts/GWAS_adj_10PCs/GWAS__{{phenotype}}__{suffix}"
 }
 
 exec:

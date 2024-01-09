@@ -1,0 +1,18 @@
+spredixcan_exec: '/home/rodrigo/PhD/software/MetaXcan/software/SPrediXcan.py'
+spredixcan_output_pattern: "{}/test_std_covariates_PC__GBR_unrelated__qc/SPrediXcan/{}__{}__{}.csv"
+
+model_db_folder: "/media/rodrigo/bd2fea02-a909-49bc-9c6c-e0750941ca71/data/GTEx/GTEx_v7"
+model_regex: '.*/gtex_v7_(.*)_imputed_europeans_tw_0.5_signif.db'
+covariances_regex: '.*/gtex_v7_(.*)_imputed_eur_covariances.txt.gz'
+
+gwas_results: "/media/rodrigo/bd2fea02-a909-49bc-9c6c-e0750941ca71/data/GWAS/output/coma/2020-09-11_02-13-41/test_std_covariates_PC__GBR_unrelated__qc/BGEN/GWAS__z0__test_std_covariates_PC__GBR_unrelated__qc.tsv"
+gwas_folder: "/media/rodrigo/bd2fea02-a909-49bc-9c6c-e0750941ca71/data/GWAS/output/coma"
+gwas_pattern: "{}/test_std_covariates_PC__GBR_unrelated__qc/BGEN/GWAS__{}__test_std_covariates_PC__GBR_unrelated__qc.tsv"
+
+PARSING_SCRIPT: '/home/rodrigo/data/doctorado/repos/GWAS_pipeline/utils/summary-gwas-imputation/src/gwas_parsing.py'
+VARIANT_METADATA: '/usr/not-backed-up2/gwas_ref_data/data/reference_panel_1000G/variant_metadata.txt.gz'
+CHAIN_FILE: "/home/rodrigo/01_Repos/GWAS_pipeline/data/hg19ToHg38.over.chain.gz"
+
+runs:
+  - "2020-09-11_02-13-41"
+  - "2020-09-30_12-36-48"
